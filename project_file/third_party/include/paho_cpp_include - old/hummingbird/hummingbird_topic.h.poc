@@ -1,0 +1,267 @@
+#include <string>
+#include <cstring>
+#include <chrono>
+#include "mqtt/async_client.h"
+#include "mqtt/message.h"
+#include "hummingbird/hummingbird_curl_for_command.h"
+
+struct hummingbird_topic_Observer {
+   virtual void OnReceiveTopicMessage(const std::string& user, const std::string& message) = 0;
+   virtual void OnSendTopicMessage(const std::string& message) = 0;
+
+  protected:
+   virtual ~hummingbird_topic_Observer() {}
+
+};
+
+class hummingbird_topic 
+{
+    private:
+        std::string topic_; 
+    protected:
+        mqtt::async_client* cli_;
+        hummingbird_curl_for_command* curl_for_command; 
+
+	hummingbird_topic_Observer* callback_;
+
+    public:
+    
+        hummingbird_topic(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        virtual std::string get_topic()=0;
+        virtual void set_topic(std::string str) = 0;
+        virtual int mqtt_response(mqtt::const_message_ptr msg) =0;
+        virtual int init() =0;
+        void send_message(const char* topic,const char* payload,const int qos,const bool retain );
+
+        void RegisterObserver(hummingbird_topic_Observer* callback);
+        hummingbird_topic_Observer* getObserver() { return callback_; }
+
+};
+
+
+class hummingbird_topic_pub_HC: public hummingbird_topic
+{
+    private:
+        std::string topic_; 
+        int QOS; 
+        
+    public:
+        hummingbird_topic_pub_HC(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);      
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+};
+
+
+class hummingbird_topic_pub_HS: public hummingbird_topic
+{
+    private:
+        std::string topic_; 
+        int QOS;
+        
+    public:
+        hummingbird_topic_pub_HS(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);        
+        int init();
+
+};
+
+class hummingbird_topic_sub_HDC: public hummingbird_topic
+{
+    private:
+        int QOS; 
+        std::string topic_;
+        char curl_ret_msg[1024]; 
+        
+    public:
+        hummingbird_topic_sub_HDC(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+
+
+class hummingbird_topic_pub_DM: public hummingbird_topic
+{
+    private:
+        int QOS; 
+        std::string topic_; 
+    public:
+        hummingbird_topic_pub_DM(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+
+///////////////////////////////////////////////////////////////////////
+// pub for device_01
+class hummingbird_topic_pub_Device_01_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+    public:
+        hummingbird_topic_pub_Device_01_Signal(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+//////////////////////////////////////////////////////////////////////
+// sub for device_01
+class hummingbird_topic_sub_Hummingbird_Device_01_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+        char curl_ret_msg[1024];
+
+    public:
+        hummingbird_topic_sub_Hummingbird_Device_01_Signal(mqtt::async_client* cli, std::string user_id, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();	
+
+};
+
+///////////////////////////////////////////////////////////////////////
+// pub for device_02
+class hummingbird_topic_pub_Device_02_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+    public:
+        hummingbird_topic_pub_Device_02_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+//////////////////////////////////////////////////////////////////////
+// sub for device_02
+class hummingbird_topic_sub_Hummingbird_Device_02_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+        char curl_ret_msg[1024];
+
+    public:
+        hummingbird_topic_sub_Hummingbird_Device_02_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+
+///////////////////////////////////////////////////////////////////////
+// pub for device_03
+class hummingbird_topic_pub_Device_03_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+    public:
+        hummingbird_topic_pub_Device_03_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+//////////////////////////////////////////////////////////////////////
+// sub for device_03
+class hummingbird_topic_sub_Hummingbird_Device_03_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+        char curl_ret_msg[1024];
+
+    public:
+        hummingbird_topic_sub_Hummingbird_Device_03_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+
+///////////////////////////////////////////////////////////////////////
+// pub for device_04
+class hummingbird_topic_pub_Device_04_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+    public:
+        hummingbird_topic_pub_Device_04_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+//////////////////////////////////////////////////////////////////////
+// sub for device_04
+class hummingbird_topic_sub_Hummingbird_Device_04_Signal: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+        char curl_ret_msg[1024];
+
+    public:
+        hummingbird_topic_sub_Hummingbird_Device_04_Signal(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+
+///////////////////////////////////////////////////////////////////////
+// pub for device_01 SUNAPI Command
+class hummingbird_topic_pub_Sunapi_Command: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+    public:
+        hummingbird_topic_pub_Sunapi_Command(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+//////////////////////////////////////////////////////////////////////
+// sub for device_01 SUNAPI Command
+class hummingbird_topic_sub_Sunapi_Command: public hummingbird_topic
+{
+    private:
+        int QOS;
+        std::string topic_;
+        char curl_ret_msg[1024];
+
+    public:
+        hummingbird_topic_sub_Sunapi_Command(mqtt::async_client* cli, hummingbird_curl_for_command* curl);
+        std::string get_topic();
+        void set_topic(std::string topic);
+        int mqtt_response(mqtt::const_message_ptr msg);
+        int init();
+
+};
+

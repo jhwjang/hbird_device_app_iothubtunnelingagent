@@ -1,0 +1,46 @@
+1>LINK : warning LNK4098: 'MSVCRTD' defaultlib가 다른 라이브러리와 충돌합니다. /NODEFAULTLIB:library를 사용하십시오.
+
+1>LINK : warning LNK4217: '_localeconv'에 정의된 'libucrtd.lib(localeconv.obj)' 기호를 함수 'jansson_d.lib(strconv.obj)'에서 '_to_locale'이(가) 가져왔습니다.
+1>MSVCRTD.lib(chandler4gs.obj) : error LNK2019: __except_handler4_common__except_handler4 함수에서 참조되는 확인할 수 없는 외부 기호
+1>D:\Work\visualstudio_repos\IoTHub_agent_jansson_Project\build_poc_client\debug\bin\Debug\IoTHub_agent_test.exe : fatal error LNK1120: 1개의 확인할 수 없는 외부 참조입니다.
+1>"IoTHub_agent_test.vcxproj" 프로젝트를 빌드했습니다. - 실패
+========== 빌드: 성공 0, 실패 1, 최신 1, 생략 0 ==========
+
+
+--->
+
+[ 링커 도구 경고 LNK4098 ]
+https://tansanc.tistory.com/410
+
+LINK : warning LNK4098: 'LIBCMT' defaultlib가 다른 라이브러리와 충돌합니다. /NODEFAULTLIB:library를 사용하십시오.
+
+출처: https://tansanc.tistory.com/410 [TanSanC]
+
+==>
+속성 - 링커 - 입력 - 특정 기본 라이브러리 무시에 추가
+MSVCRTD.lib
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+3>LIBCMTD.lib(initializers.obj) : warning LNK4098: 'msvcrtd.lib' defaultlib가 다른 라이브러리와 충돌합니다. /NODEFAULTLIB:library를 사용하십시오.
+3>LINK : warning LNK4217: '__dclass'에 정의된 'libucrtd.lib(nan.obj)' 기호를 함수 'jansson_d.lib(value.obj)'에서 '_json_real'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '___stdio_common_vsprintf'에 정의된 'libucrtd.lib(output.obj)' 기호를 함수 'jansson_d.lib(value.obj)'에서 '_vsnprintf'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '___stdio_common_vsprintf'에 정의된 'libucrtd.lib(output.obj)' 기호를 함수 'jansson_d.lib(dump.obj)'에서 '_dump_to_file'이(가) 가져왔습니다.
+3>LINK : warning LNK4286: '___stdio_common_vsprintf'에 정의된 'libucrtd.lib(output.obj)' 기호를 'jansson_d.lib(strconv.obj)'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_fclose'에 정의된 'libucrtd.lib(fclose.obj)' 기호를 함수 'jansson_d.lib(dump.obj)'에서 '_json_dump_file'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_fopen'에 정의된 'libucrtd.lib(fopen.obj)' 기호를 함수 'jansson_d.lib(dump.obj)'에서 '_json_dump_file'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_fwrite'에 정의된 'libucrtd.lib(fwrite.obj)' 기호를 함수 'jansson_d.lib(dump.obj)'에서 '_dump_to_file'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_qsort'에 정의된 'libucrtd.lib(qsort.obj)' 기호를 함수 'jansson_d.lib(dump.obj)'에서 '_do_dump'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '__time64'에 정의된 'libucrtd.lib(time.obj)' 기호를 함수 'jansson_d.lib(hashtable_seed.obj)'에서 '_time'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '__errno'에 정의된 'libucrtd.lib(errno.obj)' 기호를 함수 'jansson_d.lib(strconv.obj)'에서 '_jsonp_strtod'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_strtod'에 정의된 'libucrtd.lib(strtod.obj)' 기호를 함수 'jansson_d.lib(strconv.obj)'에서 '_jsonp_strtod'이(가) 가져왔습니다.
+3>LINK : warning LNK4217: '_localeconv'에 정의된 'libucrtd.lib(localeconv.obj)' 기호를 함수 'jansson_d.lib(strconv.obj)'에서 '_to_locale'이(가) 가져왔습니다.
+3>jansson_d.lib(dump.obj) : error LNK2019: __imp___wassert_do_dump 함수에서 참조되는 확인할 수 없는 외부 기호
+3>jansson_d.lib(strconv.obj) : error LNK2001: 확인할 수 없는 외부 기호 __imp___wassert
+3>D:\Work\visualstudio_repos\IoTHub_agent_jansson_Project\build_vs2019\debug\bin\Debug\Cloud_gateway_client.exe : fatal error LNK1120: 1개의 확인할 수 없는 외부 참조입니다.
+3>"Cloud_gateway_client.vcxproj" 프로젝트를 빌드했습니다. - 실패
+========== 모두 다시 빌드: 성공 2, 실패 1, 생략 0 ==========
+
+
+==>
+속성 - 링커 - 입력 - 특정 기본 라이브러리 무시에 추가
+LIBCMTD.lib

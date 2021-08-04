@@ -1,0 +1,3 @@
+cmake CMakeLists.txt -G "Visual Studio 16 2019" -B build_vs2019 -A "Win32"
+
+cmake CMakeLists.txt -G "Visual Studio 16 2019" -B ../build/build_vs2019 -A "Win32"
