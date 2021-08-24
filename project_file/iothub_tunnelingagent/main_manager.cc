@@ -7,8 +7,6 @@
 // time
 //#include "win_time.h"
 
-#define DeviceKeyFile "config/device_token.key"
-
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
 
@@ -96,7 +94,7 @@ void MainManager::thread_function_for_brokerManager()
 }
 
 
-#if 0  // old
+#if 0  // old -> move bridge_manager.cc
 void MainManager::StartMainManager()
 {
 	bool result = false;

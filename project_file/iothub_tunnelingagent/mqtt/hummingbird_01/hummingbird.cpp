@@ -78,9 +78,9 @@ int hummingbird::get_sub_topic_instance(string topic)
 
 void hummingbird::add_topic(int type, hummingbird_topic* topic)
 {
-	if(type == 0)
+	if(type == 0)		// add pub
 		pub_topic_list.push_back(topic);
-	else if(type == 1)
+	else if(type == 1)	// add sub
 		sub_topic_list.push_back(topic);
 }
 

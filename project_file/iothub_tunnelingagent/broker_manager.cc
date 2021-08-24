@@ -7,8 +7,6 @@
 // time
 //#include "win_time.h"
 
-#define DeviceKeyFile "config/device_token.key"
-
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
 
@@ -74,7 +72,7 @@ bool BrokerManager::Init_MQTT(std::string agentID, std::string agentPW)
 
 	if (result || !strCAPath)
 	{
-		printf("[hwanjang] Error !! hbirdURL cfg is wrong -> retur false !!!\n");
+		printf("[hwanjang] Error !! broker , ca-info cfg is wrong -> retur false !!!\n");
 
 		json_decref(json_out);
 		return false;
@@ -94,11 +92,22 @@ bool BrokerManager::Init_MQTT(std::string agentID, std::string agentPW)
 	{
 
 		int size = json_string_length(path_p);
-		char* strPATH = new char[size];
+
+#if 0 // use std::unique_ptr
+		std::unique_ptr<char[]> strPATH(new char[size]);
 
 		strcpy(strPATH, json_string_value(path_p));
 
 		strCAFilePath = strPATH;
+#else
+		const char* strPATH;
+
+		strPATH = json_string_value(path_p);
+
+		strCAFilePath = strPATH;
+#endif
+
+
 	}
 #endif
 

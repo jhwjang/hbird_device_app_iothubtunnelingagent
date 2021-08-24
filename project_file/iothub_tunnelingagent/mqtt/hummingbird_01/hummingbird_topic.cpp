@@ -28,7 +28,8 @@ if((retain == true) && (temp.empty()))
 struct timespec tspec;
 clock_gettime(CLOCK_REALTIME, &tspec);
 printf("** hummingbird_topic::send_message() -> topic : %s, QOS : %d, retain : %d\n", topic, qos, retain);
-printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n",
+            (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 #endif
 
     cli_->publish(pubmsg);  
@@ -48,7 +49,8 @@ void hummingbird_topic::send_message(const char* topic, const void *payload, con
     struct timespec tspec;
     clock_gettime(CLOCK_REALTIME, &tspec);
     printf("** hummingbird_topic::send_message() -> topic : %s, QOS : %d, retain : %d\n", topic, qos, retain);
-    printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+    printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", 
+                (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 #endif
 
     cli_->publish(pubmsg);
@@ -250,28 +252,28 @@ int hummingbird_topic_sub_Command::init(){
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// pub Tunneling
-hummingbird_topic_pub_Tunneling::hummingbird_topic_pub_Tunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id)
+// pub SUNAPI Tunneling
+hummingbird_topic_pub_SUNAPITunneling::hummingbird_topic_pub_SUNAPITunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id)
   : hummingbird_topic(cli, hub_id, topic, user_id){
     topic_ = topic;
     QOS = 1;
 //printf("** pub Tunneling topic : %s\n", topic_.c_str());
 }
 
-std::string hummingbird_topic_pub_Tunneling::get_topic(){
+std::string hummingbird_topic_pub_SUNAPITunneling::get_topic(){
     return topic_;
 }
 
-void hummingbird_topic_pub_Tunneling::set_topic(std::string topic){
+void hummingbird_topic_pub_SUNAPITunneling::set_topic(std::string topic){
     topic_ = topic;
 }
 
-int hummingbird_topic_pub_Tunneling::mqtt_response(mqtt::const_message_ptr msg){
+int hummingbird_topic_pub_SUNAPITunneling::mqtt_response(mqtt::const_message_ptr msg){
     //std::cout<<"topic pub [hub->device->user->Live] receive" <<std::endl;
     return 0;
 }
 
-int hummingbird_topic_pub_Tunneling::init(){
+int hummingbird_topic_pub_SUNAPITunneling::init(){
 #ifdef HUMMINGBIRD_DEBUG
     std::cout<<"it is  "<< topic_ <<"(Topic)'s init mqtt_response" <<std::endl;
 #endif
@@ -279,30 +281,30 @@ int hummingbird_topic_pub_Tunneling::init(){
 }
 
 /////////////////////////////////////////////////////////////////////////////////
-// hummingbird_topic_sub_Tunneling
-hummingbird_topic_sub_Tunneling::hummingbird_topic_sub_Tunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id)
+// hummingbird_topic_sub_SUNAPITunneling
+hummingbird_topic_sub_SUNAPITunneling::hummingbird_topic_sub_SUNAPITunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id)
   : hummingbird_topic(cli, hub_id, device_id, user_id){
     topic_ = create_hubid_topic(1, hub_id); // 1 : sub
     topic_.append(device_id);
     topic_.append("/users/");
     topic_.append(user_id);
-    topic_.append("/tunneling");  
+    topic_.append("/sunapi");  
     QOS = 1;
 
-	printf("[hwanjang] hummingbird_topic_sub_Tunneling() -> topic : %s\n", topic_.c_str());
+	printf("[hwanjang] hummingbird_topic_sub_SUNAPITunneling() -> topic : %s\n", topic_.c_str());
 }
 
-std::string hummingbird_topic_sub_Tunneling::get_topic(){
+std::string hummingbird_topic_sub_SUNAPITunneling::get_topic(){
     return topic_;
 }
 
-void hummingbird_topic_sub_Tunneling::set_topic(std::string topic){
+void hummingbird_topic_sub_SUNAPITunneling::set_topic(std::string topic){
     topic_ = topic;
 }
 
-int hummingbird_topic_sub_Tunneling::mqtt_response(mqtt::const_message_ptr msg){
+int hummingbird_topic_sub_SUNAPITunneling::mqtt_response(mqtt::const_message_ptr msg){
 
-    std::cout<<"[hwanjang] sub Hummingbird_Tunneling RESPONSE"<<std::endl;
+    std::cout<<"[hwanjang] sub hummingbird_topic_sub_SUNAPITunneling RESPONSE"<<std::endl;
 #if 0
     std::string topic = msg->get_topic();
     callback_->OnReceiveTopicMessage(topic, msg->to_string());
@@ -312,7 +314,7 @@ int hummingbird_topic_sub_Tunneling::mqtt_response(mqtt::const_message_ptr msg){
     return 0;
 }
 
-int hummingbird_topic_sub_Tunneling::init(){
+int hummingbird_topic_sub_SUNAPITunneling::init(){
 //#ifdef HUMMINGBIRD_DEBUG
 #if 1
 	std::cout<<"it is  "<< topic_ <<"(Topic)'s init mqtt_response" <<std::endl;
@@ -322,3 +324,76 @@ int hummingbird_topic_sub_Tunneling::init(){
     return 0;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+// pub HTTP Tunneling
+hummingbird_topic_pub_HttpTunneling::hummingbird_topic_pub_HttpTunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id)
+    : hummingbird_topic(cli, hub_id, topic, user_id) {
+    topic_ = topic;
+    QOS = 1;
+    //printf("** pub Tunneling topic : %s\n", topic_.c_str());
+}
+
+std::string hummingbird_topic_pub_HttpTunneling::get_topic() {
+    return topic_;
+}
+
+void hummingbird_topic_pub_HttpTunneling::set_topic(std::string topic) {
+    topic_ = topic;
+}
+
+int hummingbird_topic_pub_HttpTunneling::mqtt_response(mqtt::const_message_ptr msg) {
+    //std::cout<<"topic pub [hub->device->user->Live] receive" <<std::endl;
+    return 0;
+}
+
+int hummingbird_topic_pub_HttpTunneling::init() {
+#ifdef HUMMINGBIRD_DEBUG
+    std::cout << "it is  " << topic_ << "(Topic)'s init mqtt_response" << std::endl;
+#endif
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+// hummingbird_topic_sub_HttpTunneling
+hummingbird_topic_sub_HttpTunneling::hummingbird_topic_sub_HttpTunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id)
+    : hummingbird_topic(cli, hub_id, device_id, user_id) {
+    topic_ = create_hubid_topic(1, hub_id); // 1 : sub
+    topic_.append(device_id);
+    topic_.append("/users/");
+    topic_.append(user_id);
+    topic_.append("/http");
+    QOS = 1;
+
+    printf("[hwanjang] hummingbird_topic_sub_HttpTunneling() -> topic : %s\n", topic_.c_str());
+}
+
+std::string hummingbird_topic_sub_HttpTunneling::get_topic() {
+    return topic_;
+}
+
+void hummingbird_topic_sub_HttpTunneling::set_topic(std::string topic) {
+    topic_ = topic;
+}
+
+int hummingbird_topic_sub_HttpTunneling::mqtt_response(mqtt::const_message_ptr msg) {
+
+    std::cout << "[hwanjang] sub hummingbird_topic_sub_HttpTunneling RESPONSE" << std::endl;
+#if 0
+    std::string topic = msg->get_topic();
+    callback_->OnReceiveTopicMessage(topic, msg->to_string());
+#else
+    callback_->OnReceiveTopicMessage(msg);
+#endif
+    return 0;
+}
+
+int hummingbird_topic_sub_HttpTunneling::init() {
+    //#ifdef HUMMINGBIRD_DEBUG
+#if 1
+    std::cout << "it is  " << topic_ << "(Topic)'s init mqtt_response" << std::endl;
+#endif
+    cli_->subscribe(topic_, QOS);
+
+    return 0;
+}

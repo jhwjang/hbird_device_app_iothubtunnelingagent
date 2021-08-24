@@ -27,7 +27,8 @@ if((retain == true) && (temp.empty()))
 struct timespec tspec;
 clock_gettime(CLOCK_REALTIME, &tspec);
 printf("** hummingbird_topic::send_message() -> topic : %s, QOS : %d, retain : %d\n", topic, qos, retain);
-printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", 
+            (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 #endif
 
     cli_->publish(pubmsg);  
@@ -47,7 +48,8 @@ void hummingbird_topic_for_broker::send_message(const char* topic, const void *p
     struct timespec tspec;
     clock_gettime(CLOCK_REALTIME, &tspec);
     printf("** hummingbird_topic::send_message() -> topic : %s, QOS : %d, retain : %d\n", topic, qos, retain);
-    printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+    printf("[hwanjang] hummingbird_topic::send_message() time -> tv_sec : %lld, tv_nsec : %lld\n", 
+                (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 #endif
 
     cli_->publish(pubmsg);

@@ -370,7 +370,7 @@ void hummingbird_for_broker::message_arrived(mqtt::const_message_ptr msg)
 	struct timespec recv_tspec;
 	clock_gettime(CLOCK_REALTIME, &recv_tspec);
 	printf("Message arrived , topic : %s\ntime -> tv_sec : %lld, tv_nsec : %lld\n", 
-                msg->get_topic().c_str(), (long long int)recv_tspec.tv_sec, (long long int)recv_tspec.tv_nsec);
+				msg->get_topic().c_str(), (long long int)recv_tspec.tv_sec, (long long int)recv_tspec.tv_nsec);
 	//#else
 	std::cout << "MQTT Message arrived" << std::endl;
 	std::cout << "\ttopic: " << msg->get_topic() << std::endl;

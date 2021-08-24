@@ -94,7 +94,6 @@ class HummingbirdMqttInterface_for_broker
 	bool find_command(std::string topic, std::string* strCommand);
 
 	int create_topic(const std::string& topic);
-	int get_topic_type(const std::string& topic);
 
 	std::string app_id_;
 	std::string hub_id_;

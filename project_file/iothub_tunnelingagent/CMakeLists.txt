@@ -51,9 +51,10 @@ set(CONFIG_SOURCE_FILES
 	mqtt/mqtt_interface_for_broker.cc mqtt/mqtt_interface_for_broker.h
 	mqtt/hummingbird_01/hummingbird_for_broker.cpp mqtt/hummingbird_01/hummingbird_for_broker.h
 	mqtt/hummingbird_01/hummingbird_topic_for_broker.cpp mqtt/hummingbird_01/hummingbird_topic_for_broker.h
+	sunapi_manager.cpp sunapi_manager.h
 )
 
-add_executable (iothubtunnelingagent
+add_executable ( iothub_tunnelingagent
 	${CONFIG_SOURCE_FILES}
 )
 
@@ -110,7 +111,7 @@ set_target_properties(staticlib_cloudgateway_config PROPERTIES
 set_target_properties(staticlib_cloudgateway_config PROPERTIES
           IMPORTED_LOCATION_DEBUG ${THIRD_PARTY_DIR_LIB_DEBUG}/libcloudgateway_config.lib)
 
-target_link_libraries( iothubtunnelingagent PUBLIC 
+target_link_libraries( iothub_tunnelingagent PUBLIC 
 	WS2_32
 	Wldap32
 	Normaliz
@@ -118,10 +119,10 @@ target_link_libraries( iothubtunnelingagent PUBLIC
 	staticlib_jansson staticlib_crypto staticlib_ssl staticlib_curl staticlib_c_paho staticlib_cxx_paho staticlib_cloudgateway_config
 )
 	
-target_compile_options(iothubtunnelingagent PRIVATE "$<$<CONFIG:Debug>:/MTd>")
-target_compile_options(iothubtunnelingagent PRIVATE "$<$<CONFIG:Release>:/MT>")
+target_compile_options( iothub_tunnelingagent PRIVATE "$<$<CONFIG:Debug>:/MTd>")
+target_compile_options( iothub_tunnelingagent PRIVATE "$<$<CONFIG:Release>:/MT>")
 
-set_target_properties(iothubtunnelingagent
+set_target_properties( iothub_tunnelingagent
   PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib"
   LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib"
@@ -132,6 +133,8 @@ set_target_properties(iothubtunnelingagent
 
   set(CMAKE_EXE_LINKER_FLAGS_DEBUG
 	"${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:MSVCRTD")
+
+##################################################################################################
 
 else() ## linux & arm
 
@@ -173,7 +176,7 @@ set_target_properties(lib_cloudgateway_config PROPERTIES
 
 link_directories("${THIRD_PARTY_DIR_LIB_PATH}")
 
-target_link_libraries( iothubtunnelingagent PUBLIC
+target_link_libraries( iothub_tunnelingagent PUBLIC
     lib_jansson
     lib_crypto
     lib_ssl
@@ -183,7 +186,7 @@ target_link_libraries( iothubtunnelingagent PUBLIC
     lib_cloudgateway_config
 )
 
-set_target_properties( iothubtunnelingagent
+set_target_properties( iothub_tunnelingagent
     PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"

@@ -357,6 +357,7 @@ printf("[hwanjang] connection message : \n%s\n",presence_str.c_str());
 		std::string topic;
 		int index;
 
+#if 0  // old - winsenetLife
 		if (msg->get_topic().find("live") != std::string::npos)
 		{
 			topic = create_topic(1, "subdevices/+/users/+/live"); // 1: sub
@@ -382,9 +383,32 @@ printf("[hwanjang] connection message : \n%s\n",presence_str.c_str());
 		{
 			topic = create_topic(1, "subdevices/+/users/+/tunneling"); // 1: sub
 			index = get_sub_topic_instance(topic);
-			std::cout << "topic index : " << index << std::endl;
+			//std::cout << "topic index : " << index << std::endl;
 			sub_topic_list.at(index)->mqtt_response(msg);
 		}
+#else
+		if (msg->get_topic().find("command") != std::string::npos)
+		{
+			topic = create_topic(1, "subdevices/+/users/+/command"); // 1: sub
+			index = get_sub_topic_instance(topic);
+			//std::cout << "topic index : " << index << std::endl;
+			sub_topic_list.at(index)->mqtt_response(msg);
+		}
+		else if (msg->get_topic().find("sunapi") != std::string::npos)
+		{
+			topic = create_topic(1, "subdevices/+/users/+/sunapi"); // 1: sub
+			index = get_sub_topic_instance(topic);
+			//std::cout << "topic index : " << index << std::endl;
+			sub_topic_list.at(index)->mqtt_response(msg);
+		}
+		else if (msg->get_topic().find("http") != std::string::npos)
+		{
+			topic = create_topic(1, "subdevices/+/users/+/http"); // 1: sub
+			index = get_sub_topic_instance(topic);
+			//std::cout << "topic index : " << index << std::endl;
+			sub_topic_list.at(index)->mqtt_response(msg);
+		}
+#endif
 
 	};
 

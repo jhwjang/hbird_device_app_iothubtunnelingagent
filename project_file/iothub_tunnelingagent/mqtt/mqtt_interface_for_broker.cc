@@ -190,25 +190,6 @@ printf("[hwanjang] HummingbirdMqttInterface_for_broker::create_topic() -> topic 
 	return 0;
 }
 
-int HummingbirdMqttInterface_for_broker::get_topic_type(const std::string& topic)
-{
-//printf("[hwanjang] HummingbirdMqttInterface_for_broker::get_topic_type() -> topic : %s\n", topic.c_str());
-
-    int type=0;
-     if(topic.rfind("command") != std::string::npos)
-    {
-        type = 1;
-    }
-
-#if 0	
-	printf("[hwanjang] HummingbirdMqttInterface_for_broker::get_topic_type() -> topic : %s, -> return type : %d\n", 
-							topic.c_str(), type);
-#endif
-
-	return type;
-
-}
-
 void HummingbirdMqttInterface_for_broker::MQTT_Init(const std::string& path)
 {
 	printf("*** HummingbirdMqttInterface_for_broker::MQTT_Init() --->\n");
@@ -443,7 +424,6 @@ void HummingbirdMqttInterface_for_broker::OnReceiveTopicMessage(const std::strin
 #endif
 
 	//int type = create_topic(topic);
-	int type = get_topic_type(topic);
 
 	std::string connection_name = subDeviceId;
 	connection_name.append("/users/");

@@ -18,11 +18,15 @@ class APIManager {
 
 		void RegisterObserverForHbirdManager(IAPIManagerObserver* callback);
 
-		bool tunneling_command(const std::string& strTopic, json_t* root);
+		bool HttpTunnelingCommand(const std::string& strTopic, json_t* json_root);
 
 		int ThreadStartForUpdatingConfigData(int interval);
 
+		bool SUNAPITunnelingCommand(const std::string& strTopic, json_t* json_root);
+
 	private:
+
+		int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
 		// SUNAPI
 		int file_exit(std::string& filename);
@@ -39,6 +43,9 @@ class APIManager {
 		std::string gPrivate_id;
 		std::string gPrivate_pw;
 		std::string gPrivate_port;
+
+		std::string gStrDeviceIP;
+		std::string gStrDevicePW;
 
 		std::string gStunURI;
 

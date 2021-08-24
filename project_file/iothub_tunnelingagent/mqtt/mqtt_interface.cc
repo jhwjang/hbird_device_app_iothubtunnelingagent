@@ -168,13 +168,13 @@ int HummingbirdMqttInterface::create_topic(const std::string& topic)
         type = 0;
 
 	}
-    else if(topic.rfind("tunneling") != std::string::npos)
+    else if(topic.rfind("sunapi") != std::string::npos)
     {
         index = topic.find("devices");
         str = topic.substr(index);
         if( _bird->get_pub_topic_instance(str) < 0)
         {
-            hummingbird_topic* _pub_topic = new hummingbird_topic_pub_Tunneling(&client, hub_id, str, user);
+            hummingbird_topic* _pub_topic = new hummingbird_topic_pub_SUNAPITunneling(&client, hub_id, str, user);
             _bird->add_topic(0, _pub_topic);
             _pub_topic->RegisterObserver(this);
         }
@@ -182,33 +182,28 @@ int HummingbirdMqttInterface::create_topic(const std::string& topic)
         type = 1;
 
     }
+    else if (topic.rfind("http") != std::string::npos)
+    {
+        index = topic.find("devices");
+        str = topic.substr(index);
+        if (_bird->get_pub_topic_instance(str) < 0)
+        {
+            hummingbird_topic* _pub_topic = new hummingbird_topic_pub_HttpTunneling(&client, hub_id, str, user);
+            _bird->add_topic(0, _pub_topic);
+            _pub_topic->RegisterObserver(this);
+        }
 
+        type = 2;
+
+    }
+    else
+    {
+        printf("[hwanjang] HummingbirdMqttInterface::create_topic() -> topic : %s, -> unknown topic !!!\n", topic.c_str());
+    }
+	
 //printf("[hwanjang] HummingbirdMqttInterface::create_topic() -> topic : %s, -> return type : %d\n", topic.c_str(), type);
 
 	return type;
-}
-
-int HummingbirdMqttInterface::get_topic_type(const std::string& topic)
-{
-//printf("[hwanjang] HummingbirdMqttInterface::get_topic_type() -> topic : %s\n", topic.c_str());
-
-    int type=0;
-     if(topic.rfind("command") != std::string::npos)
-    {
-        type = 1;
-    }
-    else if(topic.rfind("tunneling") != std::string::npos)
-    {
-        type = 2;
-    }
-
-#if 0	
-	printf("[hwanjang] HummingbirdMqttInterface::get_topic_type() -> topic : %s, -> return type : %d\n", 
-							topic.c_str(), type);
-#endif
-
-	return type;
-
 }
 
 void HummingbirdMqttInterface::MQTT_Init(const std::string& path)
@@ -279,10 +274,15 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
     _bird->add_topic(1, sub_command);
     sub_command->RegisterObserver(this);
 
-	// Tunneling
-    hummingbird_topic* sub_tunneling = new hummingbird_topic_sub_Tunneling(&client, hub_id_, "+", "+");
-    _bird->add_topic(1, sub_tunneling);
-    sub_tunneling->RegisterObserver(this);
+	// SUNAPITunneling
+    hummingbird_topic* sub_SUNAPITunneling = new hummingbird_topic_sub_SUNAPITunneling(&client, hub_id_, "+", "+");
+    _bird->add_topic(1, sub_SUNAPITunneling);
+    sub_SUNAPITunneling->RegisterObserver(this);
+
+    // HttpTunneling
+    hummingbird_topic* sub_HttpTunneling = new hummingbird_topic_sub_HttpTunneling(&client, hub_id_, "+", "+");
+    _bird->add_topic(1, sub_HttpTunneling);
+    sub_HttpTunneling->RegisterObserver(this);
 
     SetDeviceStatus("Agent Start ... Device ON");
 }
@@ -297,7 +297,7 @@ printf("*** HummingbirdMqttInterface::MQTT_Start() --->\n");
     }
     catch (const mqtt::exception&) {
 		std::cerr << "\nERROR: Unable to connect to MQTT server !!!\n" << std::endl;
-        return 1;
+        return 0;
     }
 
     return 1;
@@ -314,7 +314,7 @@ int HummingbirdMqttInterface::MQTT_Stop()
     }
     catch (const mqtt::exception& exc) {
 		std::cerr << exc.what() << std::endl;
-        return 1;
+        return 0;
     }
 
     return 1;
@@ -403,7 +403,8 @@ void HummingbirdMqttInterface::OnReceiveTopicMessage(mqtt::const_message_ptr mqt
 #if 0
     struct timespec tspec;
     clock_gettime(CLOCK_REALTIME, &tspec);
-    printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+    printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time -> tv_sec : %lld, tv_nsec : %lld\n", 
+                (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 
     //printf("--> subDeviceId : %s\nuser : %s\ntopic: %s\n", subDeviceId.c_str(), user.c_str(), topic.c_str());
     //printf("--> command: %s\n", command.c_str());
@@ -436,7 +437,8 @@ void HummingbirdMqttInterface::OnReceiveTopicMessage(const std::string& topic, c
 #if 0
 	struct timespec tspec;
 	clock_gettime(CLOCK_REALTIME, &tspec);
-	printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time -> tv_sec : %lld, tv_nsec : %lld\n", (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
+	printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time -> tv_sec : %lld, tv_nsec : %lld\n", 
+                (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
 
 	//printf("--> subDeviceId : %s\nuser : %s\ntopic: %s\n", subDeviceId.c_str(), user.c_str(), topic.c_str());
     //printf("--> command: %s\n", command.c_str());
@@ -444,7 +446,6 @@ void HummingbirdMqttInterface::OnReceiveTopicMessage(const std::string& topic, c
 #endif
 
 	//int type = create_topic(topic);
-	int type = get_topic_type(topic);
 
 	std::string connection_name = subDeviceId;
 	connection_name.append("/users/");

@@ -150,18 +150,17 @@ class hummingbird_topic_sub_Command: public hummingbird_topic
 
 };
 
-
 ///////////////////////////////////////////////////////////////////////
 // Tunneling
 ///////////////////////////////////////////////////////////////////////
-// pub Tunneling
-class hummingbird_topic_pub_Tunneling: public hummingbird_topic
+// pub for SUNAPITunneling
+class hummingbird_topic_pub_SUNAPITunneling : public hummingbird_topic
 {
     private:
         int QOS;
         std::string topic_;
     public:
-        hummingbird_topic_pub_Tunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id);
+        hummingbird_topic_pub_SUNAPITunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
@@ -169,8 +168,8 @@ class hummingbird_topic_pub_Tunneling: public hummingbird_topic
 };
 
 //////////////////////////////////////////////////////////////////////
-// sub for Tunneling 
-class hummingbird_topic_sub_Tunneling: public hummingbird_topic
+// sub for SUNAPITunneling 
+class hummingbird_topic_sub_SUNAPITunneling : public hummingbird_topic
 {
     private:
         int QOS;
@@ -178,7 +177,7 @@ class hummingbird_topic_sub_Tunneling: public hummingbird_topic
         char curl_ret_msg[1024];
 
     public:
-        hummingbird_topic_sub_Tunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id);
+        hummingbird_topic_sub_SUNAPITunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
@@ -186,3 +185,38 @@ class hummingbird_topic_sub_Tunneling: public hummingbird_topic
 
 };
 
+
+///////////////////////////////////////////////////////////////////////
+// Tunneling
+///////////////////////////////////////////////////////////////////////
+// pub for HttpTunneling
+class hummingbird_topic_pub_HttpTunneling : public hummingbird_topic
+{
+private:
+    int QOS;
+    std::string topic_;
+public:
+    hummingbird_topic_pub_HttpTunneling(mqtt::async_client* cli, std::string hub_id, std::string topic, std::string user_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+};
+
+//////////////////////////////////////////////////////////////////////
+// sub for HttpTunneling 
+class hummingbird_topic_sub_HttpTunneling : public hummingbird_topic
+{
+private:
+    int QOS;
+    std::string topic_;
+    char curl_ret_msg[1024];
+
+public:
+    hummingbird_topic_sub_HttpTunneling(mqtt::async_client* cli, std::string hub_id, std::string device_id, std::string user_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+
+};
