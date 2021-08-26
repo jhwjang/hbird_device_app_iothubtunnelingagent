@@ -86,7 +86,6 @@ void APIManager::RegisterObserverForHbirdManager(IAPIManagerObserver* callback)
 #if 1  // test
 int APIManager::GetDeviceIP_PW(std::string* strIP, std::string* strPW)
 {
-	// TODO: 여기에 구현 코드 추가.
 	bool result = false;
 
 	std::string sunapi_info_file = "config/camera.cfg";
@@ -707,7 +706,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 		//sub_Msg["body"] = curl_easy_strerror(res);
 
 		// sub of message
-		json_object_set(sub_Msg, "code", json_integer(res));
+		json_object_set(sub_Msg, "statusCode", json_integer(res));
 		json_object_set(sub_Msg, "body", json_string(curl_easy_strerror(res)));
 	}
 	else {
@@ -722,7 +721,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 		if ((long)chunk.size == 0) // error
 		{
-			json_object_set(sub_Msg, "code", json_integer(res));
+			json_object_set(sub_Msg, "statusCode", json_integer(res));
 			json_object_set(sub_Msg, "body", json_string("fail"));
 		}
 		else  // OK
@@ -743,7 +742,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 				fprintf(stderr, "error : root\n");
 				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-				json_object_set(sub_Msg, "code", json_integer(600));
+				json_object_set(sub_Msg, "statusCode", json_integer(600));
 				json_object_set(sub_Msg, "body", json_string("Something wrong !!!"));
 
 			}
@@ -769,11 +768,11 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 							if (result)
 							{
-								json_object_set(sub_Msg, "code", json_integer(errorCode));
+								json_object_set(sub_Msg, "statusCode", json_integer(errorCode));
 							}
 							else
 							{
-								json_object_set(sub_Msg, "code", json_integer(600));
+								json_object_set(sub_Msg, "statusCode", json_integer(600));
 							}
 
 							// get detail
@@ -793,7 +792,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 						{
 							printf("--> Error not found !!!\n");
 
-							json_object_set(sub_Msg, "code", json_integer(600));
+							json_object_set(sub_Msg, "statusCode", json_integer(600));
 							json_object_set(sub_Msg, "body", json_string("Something wrong !!!"));
 						}
 					}
@@ -801,13 +800,13 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 					{
 						printf("--> Response not found !!!\n");
 
-						json_object_set(sub_Msg, "code", json_integer(600));
+						json_object_set(sub_Msg, "statusCode", json_integer(600));
 						json_object_set(sub_Msg, "body", json_string("Error !!!"));
 					}
 				}
 				else
 				{
-					json_object_set(sub_Msg, "code", json_integer(200));
+					json_object_set(sub_Msg, "statusCode", json_integer(200));
 					json_object_set(sub_Msg, "body", json_strRoot);
 					json_object_set(sub_Msg, "header", json_string(""));
 					

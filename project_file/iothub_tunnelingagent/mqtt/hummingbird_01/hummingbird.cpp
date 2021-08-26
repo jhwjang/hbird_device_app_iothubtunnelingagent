@@ -69,7 +69,7 @@ int hummingbird::get_sub_topic_instance(string topic)
 	int count = sub_topic_list.size();
 	for (int i=0; i<count; i++){
 		if(sub_topic_list.at(i)->get_topic() == topic){
-			//cout << "get_sub_topic_instance : "<<topic << endl;
+			//cout << "get_sub_topic_instance : "<< topic << " has been found !!!" << endl;
 			return i;
 		}
 	}

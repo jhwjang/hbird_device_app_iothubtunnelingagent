@@ -258,7 +258,6 @@ void BridgeManager::thread_function_for_MQTTMsg(mqtt::const_message_ptr mqttMsg)
 	}
 }
 
-
 void BridgeManager::process_command(const std::string& strTopic, mqtt::const_message_ptr mqttMsg)
 {
 	std::string strPayload = mqttMsg->get_payload_str().c_str();

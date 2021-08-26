@@ -19,7 +19,7 @@
 using std::this_thread::sleep_for;
 
 #ifdef _MSC_VER 
-bool bind_check()
+bool Check_Bind()
 {
 #if 1
 	WSADATA wsaData;
@@ -27,7 +27,7 @@ bool bind_check()
 	if (iniResult != 0)
 	{
 		cerr << "Can't Initialize winsock! Quitiing" << endl;
-		return -1;
+		return false;
 	}
 #endif
 
@@ -55,6 +55,62 @@ bool bind_check()
 	std::cout << "Binding successful" << std::endl;
 
 	return true;
+}
+
+void Checkfilelock()
+{
+	std::string file_name = "config/processChecker.txt";
+
+	HANDLE indexHandle = CreateFile(file_name.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0,
+		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+
+	if (indexHandle == INVALID_HANDLE_VALUE) {
+		printf("CreateFile failed (%d)\n", GetLastError());
+		exit(EXIT_FAILURE);
+	}
+	
+	bool bLock = false;
+	OVERLAPPED overlapped;
+	memset(&overlapped, 0, sizeof(overlapped));
+	
+	bLock = LockFileEx(indexHandle, LOCKFILE_EXCLUSIVE_LOCK, 0, 0, UINT_MAX, &overlapped);
+
+	if (bLock != true)
+	{
+		std::cout << "Failed to get lock on file  -- Error code is [" << GetLastError() << "]" << std::endl;
+		exit(EXIT_FAILURE);
+	}
+}
+#else
+
+#if 0  // for record locking - fcntl()
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#endif
+
+void Checkfilelock()
+{
+	std::string file_name = "config/processChecker.txt";
+
+	int fd = open(file_name.c_str(), O_CREAT | O_RDWR);
+
+	if (fd == -1)
+	{
+		perror("file open error : ");
+		exit(0);
+	}
+
+	struct flock lock;				
+	lock.l_type = F_WRLCK;			// 잠금 종류 : F_RDLCK, F_WRLCK, F_UNLCK
+	lock.l_start = 0;		// 잠금 시작 위치
+	lock.l_whence = SEEK_SET;		// 기준 위치 : SEEK_SET, SEEK_CUR, SEEK_END
+	lock.l_len = 0;					// 잠금 길이 : 바이트 수
+	if(fcntl(fd, F_SETLKW, &lock) == -1)
+	{
+		perror("file is lock ");
+		exit(0);
+	}
 }
 #endif
 
@@ -98,7 +154,10 @@ int main(int argc, char* argv[])
 	
 #ifdef _MSC_VER 
 	// 중복 실행 체크
-	bind_check();
+	//Check_Bind();
+
+	Checkfilelock();
+
 #endif
 
 	int agent_mode = 0;

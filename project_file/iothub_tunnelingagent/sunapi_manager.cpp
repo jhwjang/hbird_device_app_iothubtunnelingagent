@@ -11,8 +11,8 @@
 using std::this_thread::sleep_for;
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-#define CURL_TIMEOUT 5 
-#define CURL_CONNECTION_TIMEOUT 2  
+#define CURL_TIMEOUT 7 
+#define CURL_CONNECTION_TIMEOUT 5  
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
@@ -193,7 +193,9 @@ void sunapi_manager::SunapiManagerInit()
 		printf("failed to get 2. connectionStatus of subdevice ... ");
 	}
 
-#if 0
+#if 1
+	GetMacAddressOfSubdevices();
+#else
 	GetMacAddressOfSubdevices();
 
 	// Get Storage info
@@ -720,7 +722,7 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, std::string 
 		/* check for errors */
 		if (res != CURLE_OK)
 		{
-			printf("curl_process() -> curl_easy_perform() failed .. code : %d,  %s\n", res, curl_easy_strerror(res));			
+			printf("curl_process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
 		}
 		else 
 		{
