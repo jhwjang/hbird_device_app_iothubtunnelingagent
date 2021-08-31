@@ -2,6 +2,8 @@
 #define API_MANAGER_H_
 #pragma once // 2017.11.22 hwanjang
 
+#include "curl/curl.h"
+
 #include "jansson.h"
 
 struct IAPIManagerObserver {
@@ -27,6 +29,8 @@ class APIManager {
 	private:
 
 		int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
+
+		CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult);		
 
 		// SUNAPI
 		int file_exit(std::string& filename);

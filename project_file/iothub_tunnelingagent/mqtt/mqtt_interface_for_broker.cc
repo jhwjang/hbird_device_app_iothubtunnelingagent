@@ -262,7 +262,7 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
     _bird->add_topic(1, sub_command);
     sub_command->RegisterObserver(this);
 
-    SetDeviceStatus("Agent Start ... Device ON");
+    SetDeviceStatus("HummingbirdMqttInterface_for_broker::MQTT_Init() ... Agent Start ... Device ON");
 }
 
 int HummingbirdMqttInterface_for_broker::MQTT_Start()

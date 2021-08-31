@@ -284,7 +284,7 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
     _bird->add_topic(1, sub_HttpTunneling);
     sub_HttpTunneling->RegisterObserver(this);
 
-    SetDeviceStatus("Agent Start ... Device ON");
+    SetDeviceStatus("HummingbirdMqttInterface::MQTT_Init() ... Agent Start ... Device ON");
 }
 
 int HummingbirdMqttInterface::MQTT_Start()

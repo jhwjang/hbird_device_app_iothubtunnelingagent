@@ -9,7 +9,6 @@
 
 #include "api_manager.h"
 #include "NetworkAdapter_manager.h"
-#include "curl/curl.h"
 #include "win_time.h"
 
 using namespace std;
@@ -19,9 +18,8 @@ using std::this_thread::sleep_for;
 #define TEST_DEVICE_ADDRESS "192.168.11.5"  // for my device
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-#define CURL_OPT_TIMEOUT 0  // 2018.11.30 : 3 -> 0
-
-#define REMOTE_INFO_FILE "config/remote_info.txt"
+#define CURL_TIMEOUT 5 
+#define CURL_CONNECTION_TIMEOUT 3  
 
 #if 0
 // QA
@@ -119,6 +117,117 @@ int APIManager::GetDeviceIP_PW(std::string* strIP, std::string* strPW)
 	return result;
 }
 #endif
+
+#if 0  // old
+CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult)
+#else  // add timeout option
+CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
+#endif
+{
+	int startTimeOfCameraDiscovery = time(NULL);
+	std::cout << "CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCameraDiscovery << std::endl;
+
+	struct MemoryStruct chunk;
+
+	chunk.memory = (char*)malloc(1);  /* will be grown as needed by the realloc above */
+	chunk.size = 0;    /* no data at this point */
+
+	CURL* curl_handle;
+	CURLcode res;
+
+	curl_global_init(CURL_GLOBAL_ALL);
+	curl_handle = curl_easy_init();
+
+#if 0  // 2019.09.05 hwanjang - sunapi debugging
+	printf("curl_process() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
+#endif
+
+	if (curl_handle)
+	{
+#if 1
+		struct curl_slist* headers = NULL;
+		//headers = curl_slist_append(headers, "cache-control:no-cache");
+		//headers = curl_slist_append(headers, "Content-Type: application/json");
+		if (json_mode)
+			headers = curl_slist_append(headers, "Accept: application/json");
+		else
+			headers = curl_slist_append(headers, "Accept: application/text");
+
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+#endif
+
+		curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
+		curl_easy_setopt(curl_handle, CURLOPT_URL, strRequset.c_str());
+		//curl_easy_setopt(curl_handle, CURLOPT_PORT, 80L);
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
+		curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
+
+		if (ssl_opt)
+		{
+			std::string ca_path = "config/ca-certificates.crt";
+			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+		}
+		else
+		{
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+		}
+
+		/* send all data to this function  */
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+
+		/* we pass our 'chunk' struct to the callback function */
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
+		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+		curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, timeout);
+		curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
+		//curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
+
+		res = curl_easy_perform(curl_handle);
+		/* check for errors */
+		if (res != CURLE_OK)
+		{
+			printf("curl_process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
+		}
+		else
+		{
+			/*
+			* Now, our chunk.memory points to a memory block that is chunk.size
+			* bytes big and contains the remote file.
+			*/
+			long response_code;
+			curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
+			//printf("response code : %d\n", res);
+			if ((response_code != 200) || ((long)chunk.size == 0)) // 200 ok , 301 moved , 404 error
+			{
+				// default channel
+				res = CURLE_CHUNK_FAILED;
+			}
+			else
+			{
+				// OK
+				*strResult = chunk.memory;
+			}
+		}
+		curl_easy_cleanup(curl_handle);
+	}
+	else
+	{
+		printf("error ... initialize cURL !!!\n");
+		res = CURLE_FAILED_INIT;
+	}
+	free(chunk.memory);
+
+	/* we're done with libcurl, so clean it up */
+	curl_global_cleanup();
+
+	int endTimeOfCameraDiscovery = time(NULL);
+	std::cout << "CURL_Process() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCameraDiscovery << " -> " <<
+		(long int)(endTimeOfCameraDiscovery - startTimeOfCameraDiscovery) << std::endl;
+
+	return res;
+}
 
 // change byte -> unsigned char
 bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_root)
@@ -428,7 +537,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, WriteMemoryCallbackForHeader);
 	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void*)&headerChunk);
 
-	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_OPT_TIMEOUT);
+	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
 
 	CURLcode res = curl_easy_perform(curl_handle);
 
@@ -586,7 +695,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 		return false;
 	}
 
-	std::cout << "HttpTunnelingCommand() -> type : " << strType << std::endl;
+	std::cout << "SUNAPITunnelingCommand() -> type : " << strType << std::endl;
 
 	//////////////////////////////////////////////////////////////////////
 	// root -> json_t* message  
@@ -612,7 +721,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	{
 		result = json_unpack(json_root, "{s{s:s, s:s, s:s}}", "message", "method", &strMethod, "url", &strUrl, "body", &strBody);
 
-		printf("[hwanjang] Tunneling param , body : %s \n", strBody);
+		printf("[hwanjang] SUNAPI Tunneling param , body : %s \n", strBody);
 	}
 
 	if (result)
@@ -644,7 +753,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	}
 #endif
 
-	printf("[hwanjang] Tunneling param , method : %s , url : %s\n", strMethod, strUrl);
+	printf("[hwanjang] SUNAPI Tunneling param , method : %s , url : %s\n", strMethod, strUrl);
 
 	std::string strRepuest;
 
@@ -653,8 +762,9 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	strRepuest.append(strUrl);  // strUrl is equal to jmsg_path.asString()
 	//strRepuest.append("/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view");
 
-	printf("[hwanjang] Request : %s\n", strRepuest.c_str());
+	printf("[hwanjang] SUNAPITunnelingCommand() -> Request : %s\n", strRepuest.c_str());
 
+#if 0
 	CURL* curl_handle;
 	struct MemoryStruct chunk;
 
@@ -687,9 +797,22 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	/* we pass our 'chunk' struct to the callback function */
 	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
-	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_OPT_TIMEOUT);
+	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
 
 	CURLcode res = curl_easy_perform(curl_handle);
+#else
+	std::string strSUNAPIResult;
+	bool json_mode = true;
+	bool ssl_opt = false;
+
+	int timeout = CURL_TIMEOUT;
+
+	if (strRepuest.find("cameradiscovery") != std::string::npos)
+	{
+		timeout = 0;
+	}
+	CURLcode res = CURL_Process(json_mode, ssl_opt, timeout, strRepuest, gStrDevicePW, &strSUNAPIResult);
+#endif
 
 	std::string res_str;
 
@@ -716,10 +839,8 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 		 *
 		 * Do something nice with it!
 		 */
-		curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &res);
-		printf("response code : %d\n", res);
 
-		if ((long)chunk.size == 0) // error
+		if (strSUNAPIResult.size() == 0) // error
 		{
 			json_object_set(sub_Msg, "statusCode", json_integer(res));
 			json_object_set(sub_Msg, "body", json_string("fail"));
@@ -727,15 +848,15 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 		else  // OK
 		{
 			//#ifdef SUNAPI_DEBUG // 2019.09.05 hwanjang - debugging
-#if 1
-			printf("%lu bytes retrieved\n", (long)chunk.size);
-			printf("data : %s\n", chunk.memory);
+#if 0
+			printf("%lu bytes retrieved\n", strSUNAPIResult.size());
+			printf("data : %s\n", strSUNAPIResult.c_str());
 #endif
 
-			std::string strChunkData = chunk.memory;
+			//std::string strChunkData = chunk.memory;
 
 			json_error_t error_check;
-			json_t* json_strRoot = json_loads(chunk.memory, 0, &error_check);
+			json_t* json_strRoot = json_loads(strSUNAPIResult.c_str(), 0, &error_check);
 
 			if (!json_strRoot)
 			{
@@ -748,7 +869,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 			}
 			else
 			{
-				if (strChunkData.find("Detatils") != std::string::npos)
+				if (strSUNAPIResult.find("Detatils") != std::string::npos)
 				{
 					char* charResponseData;
 					int result = json_unpack(json_strRoot, "{s:s}", "Response", &charResponseData);
@@ -757,7 +878,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 					{
 						printf("[hwanjang] Error !! SUNAPITunnelingCommand() -> 1. json_unpack fail .. Response !!!\n");
 
-						if (strChunkData.find("Error") != std::string::npos)
+						if (strSUNAPIResult.find("Error") != std::string::npos)
 						{
 
 							json_t* json_subError = json_object_get(objMessage, "Error");
@@ -833,13 +954,6 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	printf("[hwanjang APIManager::SUNAPITunnelingCommand()() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseToPeer(strTopic, strMQTTMsg);
-
-	curl_easy_cleanup(curl_handle);
-
-	free(chunk.memory);
-
-	/* we're done with libcurl, so clean it up */
-	curl_global_cleanup();
 
 	return true;
 }

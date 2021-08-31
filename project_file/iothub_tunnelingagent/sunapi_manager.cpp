@@ -11,8 +11,8 @@
 using std::this_thread::sleep_for;
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-#define CURL_TIMEOUT 7 
-#define CURL_CONNECTION_TIMEOUT 5  
+#define CURL_TIMEOUT 5 
+#define CURL_CONNECTION_TIMEOUT 3  
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
@@ -306,7 +306,7 @@ bool sunapi_manager::GetGatewayInfo()
 
 	strSUNAPIResult.clear();
 
-	res = CURL_Process(json_mode, ssl_opt, request, gStrDevicePW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, gStrDevicePW, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
@@ -331,8 +331,6 @@ bool sunapi_manager::GetGatewayInfo()
 			}
 			else
 			{
-				printf("strSUNAPIResult : %s\n", strSUNAPIResult.c_str());
-
 #if 0 // original NVR
 				json_t* json_interface = json_object_get(json_strRoot, "NetworkInterfaces");
 
@@ -659,7 +657,11 @@ size_t sunapi_manager::WriteMemoryCallback(void* contents, size_t size, size_t n
 }
 
 
+#if 0  // old
 CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult)
+#else  // add timeout option
+CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
+#endif
 {
 	// TODO: 여기에 구현 코드 추가.
 	ChunkStruct chunk;
@@ -714,7 +716,8 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, std::string 
 
 		/* we pass our 'chunk' struct to the callback function */
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
-		curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+		curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, timeout);
 		curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
 		//curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
 
@@ -786,7 +789,7 @@ bool sunapi_manager::ByPassSUNAPI(int channel, bool json_mode, const std::string
 
 	CURLcode res;
 	std::string strSUNAPIResult;
-	res = CURL_Process(json_mode, false, request, devicePW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, false, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
@@ -831,7 +834,7 @@ int sunapi_manager::GetMaxChannelByAttribute()
 	bool json_mode = true;
 	bool ssl_opt = false;
 
-	res = CURL_Process(json_mode, ssl_opt, request, gStrDevicePW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, gStrDevicePW, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
@@ -1430,10 +1433,14 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 	bool json_mode = true;
 	bool ssl_opt = false;
 
-	res = CURL_Process(json_mode, ssl_opt, request, devicePW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
+		time_t end_time = time(NULL);
+		std::cout << "GetRegiesteredCameraStatus() -> CURLE_OK !! Received data , time : " << (long int)end_time << " , diff : "
+			<< (long int)(end_time - g_UpdateTimeOfRegistered) << std::endl;
+
 		if (strSUNAPIResult.empty())
 		{
 			printf("[hwanjang] GetRegiesteredCameraStatus() result string is empty !!!\n");
@@ -1560,6 +1567,12 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 	else
 	{
 		printf("GetRegiesteredCameraStatus() .... failed !!!\n");
+
+		time_t end_time = time(NULL);
+		std::cout << "GetRegiesteredCameraStatus() -> End ... time : " << (long int)end_time << " , diff : "
+			<< (long int)(end_time - g_UpdateTimeOfRegistered) << std::endl;
+
+
 		return false;
 	}
 
@@ -1839,7 +1852,7 @@ bool sunapi_manager::GetFirmwareVersionOfGateway()
 	bool json_mode = true;
 	bool ssl_opt = false;
 
-	res = CURL_Process(json_mode, ssl_opt, request, gStrDevicePW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, gStrDevicePW, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
@@ -1969,11 +1982,7 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 
 	if (result)
 	{
-		if (strByPassResult.empty())
-		{
-
-		}
-		else
+		if ( !strByPassResult.empty() )
 		{
 			json_error_t error_check;
 			json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);
@@ -2051,7 +2060,6 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 
 void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, std::string strTid)
 {
-#if 1
 	std::string strCommand = "deviceinfo";
 	std::string strType = "view";
 	std::string strView = "detail";
@@ -2136,8 +2144,6 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	printf("SendSubdeviceInfoForDeviceInfoView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
-#endif
-
 }
 
 

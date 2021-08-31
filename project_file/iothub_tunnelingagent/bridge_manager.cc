@@ -91,12 +91,16 @@ void BridgeManager::StartBridgeManager()
 			}
 			else
 			{
+#if 1	// connect to bridge app
+				mMqtt_server_ = "tcp://localhost:2883";
+#else	// connect to MQTT Server directly for test.
 				// Start to connect to MQTT Server 
 				std::string server_address = "ssl://";
 				server_address.append(address);
 
 				mMqtt_server_ = server_address;
-				//mMqtt_server_ = "tcp://192.168.11.2:1883";
+				//mMqtt_server_ = "tcp://192.168.11.2:2883";
+#endif
 			}
 		}
 	}

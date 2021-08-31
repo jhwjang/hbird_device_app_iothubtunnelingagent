@@ -150,7 +150,12 @@ protected:
 	int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
+#if 0
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult);
+#else  // add timeout option
+	CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult);
+#endif
+
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
 
 	int GetMaxChannelByAttribute();
