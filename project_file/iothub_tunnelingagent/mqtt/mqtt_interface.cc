@@ -242,7 +242,7 @@ void HummingbirdMqttInterface::MQTT_Init(const std::string& path)
 	mqtt::message willmsg(willing_topic, LWT_PAYLOAD, WILLING_MSG_QOS, true);
 ///////////////////////////////////////////////////////////////////////////////////
     mqtt::will_options will(willmsg);
-    connopts.set_will(will);
+    //connopts.set_will(will);  // last will message
     connopts.set_ssl(sslopts);
 
 #if 1 // debug
