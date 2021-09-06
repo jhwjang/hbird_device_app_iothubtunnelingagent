@@ -268,7 +268,7 @@ void BridgeManager::process_command(const std::string& strTopic, mqtt::const_mes
 
 	//printf("process_command() -> receive command : %s\n", strPayload.c_str());
 
-#if 1
+#if 0
 	mSUNAPI_manager_->GetDataForDashboardAPI(strTopic, strPayload);
 #else
 	json_error_t error_check;
@@ -288,12 +288,11 @@ void BridgeManager::process_command(const std::string& strTopic, mqtt::const_mes
 	}
 	else
 	{
-		// Test
-		//mSUNAPI_manager_->TestDashboardView();
-		//mSUNAPI_manager_->TestDeviceInfoView();
-		//mSUNAPI_manager_->TestFirmwareVersionInfoView();
-
-		if (strncmp("dashboard", charCommand, 9) == 0)
+		if (strncmp("checkPassword", charCommand, 9) == 0)
+		{
+			mSUNAPI_manager_->CommandCheckPassword(strTopic, json_strRoot);//
+		}
+		else if (strncmp("dashboard", charCommand, 9) == 0)
 		{
 			mSUNAPI_manager_->GetDashboardView(strTopic, json_strRoot);
 		}
@@ -301,13 +300,13 @@ void BridgeManager::process_command(const std::string& strTopic, mqtt::const_mes
 		{
 			mSUNAPI_manager_->GetDeviceInfoView(strTopic, json_strRoot);
 		}
-		else if (strncmp("firmware", charCommand, 10) == 0)
+		else if (strncmp("firmware", charCommand, 8) == 0)
 		{
 			if (strncmp("view", charType, 4) == 0)
 			{
 				mSUNAPI_manager_->GetFirmwareVersionInfoView(strTopic, json_strRoot);
 			}
-			else if (strncmp("update", charType, 4) == 0)
+			else if (strncmp("update", charType, 6) == 0)
 			{
 				// not yet
 			}

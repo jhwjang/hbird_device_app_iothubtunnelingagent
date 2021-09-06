@@ -75,9 +75,10 @@ typedef struct storage_Info {
 
 typedef struct gateway_Info {
 	int WebPort;
+	std::string Model;
 	std::string IPv4Address;
 	std::string MACAddress;
-	std::string firmwareVersion;
+	std::string FirmwareVersion;
 } GatewayInfo;
 
 typedef struct channel_Info {
@@ -87,9 +88,11 @@ typedef struct channel_Info {
 	int HTTPPort;
 	std::string ChannelStatus; // Disconnected , Success , ConnectFail
 	std::string Model;			// camera model
+	std::string DeviceName;		// 21.09.06 add - sub device name
 	std::string LinkStatus;		// Connected , Disconnected
 	std::string IPv4Address;
 	std::string MACAddress;
+	std::string FirmwareVersion;
 	std::string UserID;			// admin
 } Channel_Infos;
 
@@ -104,6 +107,7 @@ typedef struct firmware_version_Info {
 struct ISUNAPIManagerObserver {
 	virtual ~ISUNAPIManagerObserver() {};
 
+	virtual void SendResponseToPeer(const std::string& topic, const std::string& message) = 0;
 	virtual void SendResponseForDashboard(const std::string& topic, const std::string& message) = 0;
 };
 
@@ -131,6 +135,10 @@ public:
 	void GetDataForDashboardAPI(const std::string& strTopic, const std::string& strPayload);
 
 	// interface
+	// command - checkPassword
+	void CommandCheckPassword(const std::string& strTopic, json_t* json_root);
+
+	// command - dashboard
 	void GetDashboardView(const std::string& strTopic, json_t* json_strRoot);
 	void GetDeviceInfoView(const std::string& strTopic, json_t* json_strRoot);
 	void GetFirmwareVersionInfoView(const std::string& strTopic, json_t* json_strRoot);
@@ -158,7 +166,7 @@ protected:
 
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
 
-	int GetMaxChannelByAttribute();
+	int GetMaxChannelByAttribute(std::string strID_PW);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 1. dashboard view
@@ -190,8 +198,13 @@ protected:
 	// 2. deviceinfo view
 
 	bool GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW);	
-	bool GetMacAddressOfSubdevices();
 
+	// 21.09.06 add - sub device name
+	bool GetDeviceNameOfSubdevices();
+	int ThreadStartForSubDeviceInfo(int index, const std::string deviceIP, const std::string devicePW);
+	void thread_function_for_subdevice_info(int index, const std::string deviceIP, const std::string devicePW);
+
+	bool GetMacAddressOfSubdevices();
 	int ThreadStartForNetworkInterface(int index, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_network_interface(int index, const std::string deviceIP, const std::string devicePW);
 
@@ -208,7 +221,7 @@ protected:
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 3. firmware info view
 
-	bool GetFirmwareVersionOfGateway();
+	bool GetDeviceInfoOfGateway();
 
 	bool GetFirmwareVersionFromText(std::string strText, std::string* strResult);
 
@@ -254,11 +267,13 @@ private:
 
 	int g_Sub_camera_reg_Cnt;
 	int g_Sub_network_info_Cnt;
+	int g_Sub_device_info_Cnt;
 
 	time_t g_UpdateTimeOfStoragePresence;
 	time_t g_UpdateTimeOfStorageStatus;  // for 1. dashboard - storage status
 
 	time_t g_UpdateTimeOfRegistered;	
+	time_t g_UpdateTimeOfDeviceInfo;
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info
 
 	time_t g_UpdateTimeForFirmwareVersionOfSubdevices; // for 3. firmware version
