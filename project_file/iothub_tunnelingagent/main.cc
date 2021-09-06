@@ -161,14 +161,30 @@ int main(int argc, char* argv[])
 #endif
 
 	int agent_mode = 0;
-	std::string strMode;
+	std::string strMode, strDeviceID, strDeviceKey;
 	if (argc > 1)
 	{
 		strMode = argv[1];
 		agent_mode = std::stoi(strMode);
+
+		if (argc > 3)
+		{
+			strDeviceID = argv[2];
+			strDeviceKey = argv[3];
+		}
+		else
+		{
+			strDeviceID = "file";
+			strDeviceKey = "file";
+		}
 	}
 	else
+	{
 		agent_mode = 2;  // broker mode
+
+		strDeviceID = "file";
+		strDeviceKey = "file";
+	}
 
 	if ((agent_mode < 0) && (agent_mode > 2))
 		agent_mode = 2;  // broker mode
@@ -180,7 +196,7 @@ int main(int argc, char* argv[])
 
 	// for test --> agent_mode : bridge & broker
 	agent_mode = 1;
-	mainManager->StartMainManager(agent_mode);
+	mainManager->StartMainManager(agent_mode, strDeviceID, strDeviceKey);
 
 	thread_start();
 

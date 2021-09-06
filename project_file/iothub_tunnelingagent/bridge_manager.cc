@@ -54,7 +54,7 @@ int BridgeManager::file_exit(std::string& filename)
 	return 0;
 }
 
-void BridgeManager::StartBridgeManager()
+void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strDeviceKey)
 {
 	bool result = false;
 
@@ -62,48 +62,62 @@ void BridgeManager::StartBridgeManager()
 	mAPI_manager_ = std::make_unique<APIManager>();
 	mAPI_manager_->RegisterObserverForHbirdManager(this);
 
-	std::string user_token = USER_ACCESS_TOKEN;  // temp
-	std::string address, device_id, device_key;
+	std::string device_id = strDeviceID;
+	std::string	device_key = strDeviceKey;
 
-	user_token.clear(); // for test --> empty? -> read user_token.cfg
+#if 1 // for test
 
-	//mConfig_manager_ = new ConfigManager();
-	mConfig_manager_ = std::make_unique<ConfigManager>();
-	result = mConfig_manager_->GetConfigModelDevice(user_token, &address, &device_id, &device_key);
-
-	if (!result)
+	if (strDeviceID.find("file") != std::string::npos)
 	{
-		printf("[hwanjang] *** Error !!! config server -> failed to get MQTT Server address !! --> Set localhost ...\n");
+		std::string user_token = USER_ACCESS_TOKEN;  // temp
+		std::string address;
 
-		mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-	}
-	else
-	{
-		if (address.empty())
+		user_token.clear(); // for test --> empty? -> read user_token.cfg
+
+		//mConfig_manager_ = new ConfigManager();
+		mConfig_manager_ = std::make_unique<ConfigManager>();
+		result = mConfig_manager_->GetConfigModelDevice(user_token, &address, &device_id, &device_key);
+			
+		if (!result)
 		{
+			printf("[hwanjang] *** Error !!! config server -> failed to get MQTT Server address !! --> Set localhost ...\n");
+
 			mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
 		}
-		else	
+		else
 		{
-			if ((address.find("localhost") != std::string::npos) || (address.find("127.0.0.1") != std::string::npos))
+			if (address.empty())
 			{
 				mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
 			}
 			else
 			{
+				if ((address.find("localhost") != std::string::npos) || (address.find("127.0.0.1") != std::string::npos))
+				{
+					mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
+				}
+				else
+				{
 #if 1	// connect to bridge app
-				mMqtt_server_ = "tcp://localhost:2883";
+					mMqtt_server_ = "tcp://localhost:2883";
 #else	// connect to MQTT Server directly for test.
-				// Start to connect to MQTT Server 
-				std::string server_address = "ssl://";
-				server_address.append(address);
+					// Start to connect to MQTT Server 
+					std::string server_address = "ssl://";
+					server_address.append(address);
 
-				mMqtt_server_ = server_address;
-				//mMqtt_server_ = "tcp://192.168.11.2:2883";
+					mMqtt_server_ = server_address;
+					//mMqtt_server_ = "tcp://192.168.11.2:2883";
 #endif
+				}
 			}
 		}
 	}
+	else
+		mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
+
+#else
+	mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
+#endif
 
 	std::cout << "BridgeManager::StartBridgeManager() -> Connect to MQTT Server ... " << mMqtt_server_ << std::endl;
 

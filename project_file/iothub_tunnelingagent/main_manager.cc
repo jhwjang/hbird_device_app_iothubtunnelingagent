@@ -32,7 +32,7 @@ MainManager::~MainManager() {
 		delete broker_handler_;
 }
 
-void MainManager::StartMainManager(int mode)
+void MainManager::StartMainManager(int mode, std::string strDeviceID, std::string strDeviceKey)
 {
 
 	switch (mode)
@@ -41,7 +41,7 @@ void MainManager::StartMainManager(int mode)
 		{
 			// bridge mode
 			bridge_handler_ = new BridgeManager();
-			ThreadStartForbridgeManager();
+			ThreadStartForbridgeManager(strDeviceID, strDeviceKey);
 			
 			// broker mode
 			broker_handler_ = new BrokerManager();
@@ -52,7 +52,7 @@ void MainManager::StartMainManager(int mode)
 		case 1:  // bridge mode
 		{
 			bridge_handler_ = new BridgeManager();
-			ThreadStartForbridgeManager();
+			ThreadStartForbridgeManager(strDeviceID, strDeviceKey);
 			break;
 		}
 		case 2:  // broker mode
@@ -66,17 +66,17 @@ void MainManager::StartMainManager(int mode)
 	}
 }
 
-int MainManager::ThreadStartForbridgeManager()
+int MainManager::ThreadStartForbridgeManager(std::string strDeviceID, std::string strDeviceKey)
 {
-	std::thread thread_function_for_bridge([=] { thread_function_for_bridgeManager(); });
+	std::thread thread_function_for_bridge([=] { thread_function_for_bridgeManager(strDeviceID, strDeviceKey); });
 	thread_function_for_bridge.detach();
 
 	return 0;
 }
 
-void MainManager::thread_function_for_bridgeManager()
+void MainManager::thread_function_for_bridgeManager(std::string strDeviceID, std::string strDeviceKey)
 {
-	bridge_handler_->StartBridgeManager();
+	bridge_handler_->StartBridgeManager(strDeviceID, strDeviceKey);
 }
 
 

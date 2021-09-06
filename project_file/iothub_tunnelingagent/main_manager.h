@@ -13,13 +13,13 @@ public:
 	MainManager();
 	~MainManager();
 
-	void StartMainManager(int mode);
+	void StartMainManager(int mode, std::string strDeviceID, std::string strDeviceKey);
 
 private:
 
 	// for bridge
-	int ThreadStartForbridgeManager();
-	void thread_function_for_bridgeManager();
+	int ThreadStartForbridgeManager(std::string strDeviceID, std::string strDeviceKey);
+	void thread_function_for_bridgeManager(std::string strDeviceID, std::string strDeviceKey);
 
 	// for broker
 	int ThreadStartForbrokerManager();
