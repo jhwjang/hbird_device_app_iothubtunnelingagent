@@ -56,8 +56,8 @@ IMQTTManagerSink* HummingbirdMqttInterface::g_MQTTManagerinstance = nullptr;
 
 HummingbirdMqttInterface::HummingbirdMqttInterface(
 	const std::string& server_address, const std::string& id, const std::string& pw)
-  : client(server_address, id),
-    //client(server_address, "cam0002"),
+  : //client(server_address, id),
+    client(server_address, "main_agent_bridge"),
    connopts(id, pw)
 {
     

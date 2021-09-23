@@ -56,8 +56,8 @@ IMQTTManagerSink_for_broker* HummingbirdMqttInterface_for_broker::g_MQTTManageri
 
 HummingbirdMqttInterface_for_broker::HummingbirdMqttInterface_for_broker(
 	const std::string& server_address, const std::string& id, const std::string& pw)
-  : client(server_address, id),
-    //client(server_address, "cam0002"),
+  : //client(server_address, id),
+    client(server_address, "main_agent_broker"),
    connopts(id, pw)
 {
     app_id_ = id;
