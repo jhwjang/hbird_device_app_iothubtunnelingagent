@@ -157,7 +157,16 @@ int main(int argc, char* argv[])
 	//Check_Bind();
 
 	Checkfilelock();
+#endif
 
+#if 1  // main agent version for test
+	printf("\n###############################################################\n");
+	printf("mainagent 0.0.1 , 2 Aug 2021\npre-installed version\n");
+	printf("\n###############################################################\n");
+#else
+	printf("\n###############################################################\n");
+	printf("mainagent 0.0.2 , 7 Sep 2021\ncloud update version\n");
+	printf("\n###############################################################\n");
 #endif
 
 	int agent_mode = 0;
@@ -186,16 +195,16 @@ int main(int argc, char* argv[])
 		strDeviceKey = "file";
 	}
 
+#if 0 // ori
 	if ((agent_mode < 0) && (agent_mode > 2))
 		agent_mode = 2;  // broker mode
-
+#else // for test
+	if ((agent_mode < 0) && (agent_mode > 2))
+		agent_mode = 0;  // test -> bridge & broker mode
+#endif
 	std::cout << "Cloud Agent Start ... mode : " << agent_mode << std::endl;
 
 	MainManager* mainManager = new MainManager();
-
-
-	// for test --> agent_mode : bridge & broker
-	agent_mode = 1;
 	mainManager->StartMainManager(agent_mode, strDeviceID, strDeviceKey);
 
 	thread_start();
