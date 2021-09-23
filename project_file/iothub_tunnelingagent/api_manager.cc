@@ -863,12 +863,15 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 				fprintf(stderr, "error : root\n");
 				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-				json_object_set(sub_Msg, "statusCode", json_integer(600));
-				json_object_set(sub_Msg, "body", json_string("Something wrong !!!"));
+				printf("SUNAPITunnelingCommand() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
 
+				json_object_set(sub_Msg, "statusCode", json_integer(200));
+				json_object_set(sub_Msg, "body", json_string(strSUNAPIResult.c_str()));
 			}
 			else
 			{
+				printf("SUNAPITunnelingCommand() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
+
 				if (strSUNAPIResult.find("Detatils") != std::string::npos)
 				{
 					char* charResponseData;
@@ -880,7 +883,6 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 						if (strSUNAPIResult.find("Error") != std::string::npos)
 						{
-
 							json_t* json_subError = json_object_get(objMessage, "Error");
 
 							// get error code
@@ -913,29 +915,28 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 						{
 							printf("--> Error not found !!!\n");
 
-							json_object_set(sub_Msg, "statusCode", json_integer(600));
-							json_object_set(sub_Msg, "body", json_string("Something wrong !!!"));
+							json_object_set(sub_Msg, "statusCode", json_integer(200));
+							json_object_set(sub_Msg, "body", json_string(strSUNAPIResult.c_str()));
 						}
 					}
 					else
 					{
 						printf("--> Response not found !!!\n");
 
-						json_object_set(sub_Msg, "statusCode", json_integer(600));
-						json_object_set(sub_Msg, "body", json_string("Error !!!"));
+						json_object_set(sub_Msg, "statusCode", json_integer(200));
+						json_object_set(sub_Msg, "body", json_string(strSUNAPIResult.c_str()));
 					}
 				}
 				else
 				{
 					json_object_set(sub_Msg, "statusCode", json_integer(200));
-					json_object_set(sub_Msg, "body", json_strRoot);
-					json_object_set(sub_Msg, "header", json_string(""));
-					
+					json_object_set(sub_Msg, "body", json_strRoot);						
 				}
 			}
 		}
 	}
 
+	json_object_set(sub_Msg, "header", json_string(""));
 #if 0
 	send_Msg["command"] = cmd_str;	
 	send_Msg["type"] = "response";
