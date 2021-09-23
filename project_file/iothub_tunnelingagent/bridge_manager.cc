@@ -280,55 +280,41 @@ void BridgeManager::process_command(const std::string& strTopic, mqtt::const_mes
 {
 	std::string strPayload = mqttMsg->get_payload_str().c_str();
 
-	//printf("process_command() -> receive command : %s\n", strPayload.c_str());
+	printf("process_command() -> receive command : %s\n", strPayload.c_str());
 
-#if 0
-	mSUNAPI_manager_->GetDataForDashboardAPI(strTopic, strPayload);
-#else
-	json_error_t error_check;
-	json_t* json_strRoot = json_loads(mqttMsg->get_payload_str().c_str(), 0, &error_check);
 
-	//cout << "process_command() -> " << json_dumps(json_strData, 0) << endl;
-
-	int ret;
-	char* charCommand, * charType;
-	ret = json_unpack(json_strRoot, "{s:s, s:s}", "command", &charCommand, "type", &charType);
-
-	if (ret)
+	if (strPayload.find("checkPassword") != std::string::npos)
+		//if (strncmp("checkPassword", charCommand, 9) == 0)
 	{
-		printf("[hwanjang] Error !! process_command() -> json_unpack fail .. !!!\n");
-
-		//printf("strPayload : %s\n", strPayload.c_str());
+		mSUNAPI_manager_->CommandCheckPassword(strTopic, strPayload);
 	}
+#if 1
 	else
 	{
-		if (strncmp("checkPassword", charCommand, 9) == 0)
+		mSUNAPI_manager_->GetDataForDashboardAPI(strTopic, strPayload);
+	}
+#else
+	else if (strncmp("dashboard", charCommand, 9) == 0)
+	{
+		mSUNAPI_manager_->GetDashboardView(strTopic, json_strRoot);
+	}
+	else if (strncmp("deviceinfo", charCommand, 10) == 0)
+	{
+		mSUNAPI_manager_->GetDeviceInfoView(strTopic, json_strRoot);
+	}
+	else if (strncmp("firmware", charCommand, 8) == 0)
+	{
+		if (strncmp("view", charType, 4) == 0)
 		{
-			mSUNAPI_manager_->CommandCheckPassword(strTopic, json_strRoot);//
+			mSUNAPI_manager_->GetFirmwareVersionInfoView(strTopic, json_strRoot);
 		}
-		else if (strncmp("dashboard", charCommand, 9) == 0)
+		else if (strncmp("update", charType, 6) == 0)
 		{
-			mSUNAPI_manager_->GetDashboardView(strTopic, json_strRoot);
-		}
-		else if (strncmp("deviceinfo", charCommand, 10) == 0)
-		{
-			mSUNAPI_manager_->GetDeviceInfoView(strTopic, json_strRoot);
-		}
-		else if (strncmp("firmware", charCommand, 8) == 0)
-		{
-			if (strncmp("view", charType, 4) == 0)
-			{
-				mSUNAPI_manager_->GetFirmwareVersionInfoView(strTopic, json_strRoot);
-			}
-			else if (strncmp("update", charType, 6) == 0)
-			{
-				// not yet
-			}
+			// not yet
 		}
 	}
-
-	json_decref(json_strRoot);
 #endif
+
 }
 
 void BridgeManager::process_SUNAPITunneling(const std::string& strTopic, mqtt::const_message_ptr mqttMsg)

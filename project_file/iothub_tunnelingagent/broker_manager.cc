@@ -30,7 +30,7 @@ BrokerManager::~BrokerManager() {
 void BrokerManager::StartBrokerManager()
 {
 	// temp
-	std::string agent_id = "app-001";  // cloud agent ID
+	std::string agent_id = "app-mainagent";  // cloud agent ID
 	std::string agent_key = "agentKey";
 
 	if (!Init_MQTT(agent_id, agent_key))
