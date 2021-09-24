@@ -15,6 +15,9 @@ typedef struct MemoryStruct {
 } ChunkStruct;
 
 
+/////////////////////////////////////////////////////////////////////////////
+// int -> -1 : unknown ,  0 : false , 1 : true , 2 : timeout , 3 : authfail
+// 
 //////////////////////////////////////////////////////////////////////////////
 // for firmware info
 // 
@@ -29,6 +32,7 @@ typedef struct MemoryStruct {
 // ⑥ Full 버전 정보
 typedef struct firmware_update_Info {
 	bool update_check;
+	int curl_responseCode;
 	std::string model;
 	std::string product;
 	std::string extension;
@@ -53,13 +57,14 @@ typedef struct firmware_update_Info {
 //  - das_enable , das_overwrite
 
 typedef struct storage_Info {
-	bool update_check;
+	bool update_check;	
 	bool das_presence;
 	bool sdfail;
 	bool nas_presence;
 	bool nasfail;
 	bool das_enable;			// on or off of DAS recording
 	bool nas_enable;			// on or off of NAS recording
+	int curl_responseCode;
 	std::string das_status;  // normal, Active, SDfailure, ... , timeout, authError
 	std::string nas_status;  // normal, Active, failure, timeout, authError
 } Storage_Infos;
@@ -74,18 +79,22 @@ typedef struct storage_Info {
 //  - LinkStatus , IPv4Address , MACAddess
 
 typedef struct gateway_Info {
+	int curl_responseCode;
 	int WebPort;
 	std::string Model;
 	std::string IPv4Address;
 	std::string MACAddress;
 	std::string FirmwareVersion;
+	std::string connectionStatus;
 } GatewayInfo;
 
 typedef struct channel_Info {
-	bool update_check;
+	bool update_check_deviceinfo;
+	bool update_check_networkinterface;	
 	bool IsBypassSupported;		
+	int curl_responseCode;
 	int ConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 
-	int HTTPPort;
+	int HTTPPort;	
 	std::string ChannelStatus; // Disconnected , Success , ConnectFail
 	std::string Model;			// camera model
 	std::string DeviceName;		// 21.09.06 add - sub device name
@@ -99,6 +108,7 @@ typedef struct channel_Info {
 
 typedef struct firmware_version_Info {
 	bool update_check;
+	int curl_responseCode;
 	std::string FirmwareVersion;
 	std::string LatestFirmwareVersion;
 } Firmware_Version_Infos;
@@ -120,9 +130,11 @@ public:
 	void RegisterObserverForHbirdManager(ISUNAPIManagerObserver* callback);
 	void SunapiManagerInit();
 
-	bool GetGatewayInfo();
+	bool GetNetworkInterfaceOfGateway();
 
 	void ResetGatewayInfo();
+	void ResetNetworkInterfaceOfGateway();
+	void ResetDeviceInfoOfGateway();
 
 	int GetMaxChannel();
 	int GetConnectionCount();
@@ -136,7 +148,7 @@ public:
 
 	// interface
 	// command - checkPassword
-	void CommandCheckPassword(const std::string& strTopic, json_t* json_root);
+	void CommandCheckPassword(const std::string& strTopic, const std::string& strPayload);
 
 	// command - dashboard
 	void GetDashboardView(const std::string& strTopic, json_t* json_strRoot);
@@ -147,9 +159,13 @@ public:
 
 protected:
 	// reset
-	void ResetStorageInfos(int channel);
-	void ResetSubdeviceInfos(int channel);
-	void ResetFirmwareVersionInfos(int channel);
+	void ResetStorageInfos();
+	void ResetStorageInfoForChannel(int channel);
+	void ResetSubdeviceInfos();
+	void ResetSubdeviceInfoForChannel(int channel);
+	void ResetFirmwareVersionInfos();
+	void ResetFirmwareVersionInfoForChannel(int channel);
+
 	//update
 	void UpdateStorageInfos();
 	void UpdateSubdeviceInfos();
@@ -167,6 +183,8 @@ protected:
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
 
 	int GetMaxChannelByAttribute(std::string strID_PW);
+	bool GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW, CURLcode* resCode);
+	void SendErrorResponseForGateway(const std::string& strTopic, json_t* json_strRoot, std::string strError);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 1. dashboard view
@@ -185,19 +203,17 @@ protected:
 	void GetDataForStorageInfo();
 
 
-	void SendResponseForDashboardView(const std::string& strTopic, std::string strTid);
+	void SendResponseForDashboardView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 	
 	void Set_update_checkForStorageInfo();
 	void Reset_update_checkForStorageInfo();
-	int ThreadStartSendResponseForDashboardView(const std::string strTopic, std::string strTid);
+	int ThreadStartSendResponseForDashboardView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
-	void thread_function_for_send_response_for_dashboard(int maxChannel, const std::string strTopic, std::string strTid);
+	void thread_function_for_send_response_for_dashboard(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	// 2. deviceinfo view
-
-	bool GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW);	
+	// 2. deviceinfo view	
 
 	// 21.09.06 add - sub device name
 	bool GetDeviceNameOfSubdevices();
@@ -209,13 +225,14 @@ protected:
 	void thread_function_for_network_interface(int index, const std::string deviceIP, const std::string devicePW);
 
 	void GetDataForSubdeviceInfo();
-	void SendResponseForDeviceInfoView(const std::string& strTopic, std::string strTid);
-
+	void SendResponseForDeviceInfoView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	void Set_update_checkForDeviceInfo();
 	void Reset_update_checkForDeviceInfo();
-	int ThreadStartSendResponseForDeviceInfoView(const std::string strTopic, std::string strTid);
-	void thread_function_for_send_response_for_deviceInfo(int maxChannel, const std::string strTopic, std::string strTid);
+	void Set_update_checkForNetworkInterface();
+	void Reset_update_checkForNetworkInterface();
+	int ThreadStartSendResponseForDeviceInfoView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
+	void thread_function_for_send_response_for_deviceInfo(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
@@ -238,16 +255,18 @@ protected:
 	int ThreadStartGetLatestFirmwareVersionFromURL();
 	void thread_function_for_get_latestFirmwareVersion();
 
-	void SendResponseForFirmwareView(const std::string& strTopic, std::string strTid);
+	void SendResponseForFirmwareView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
-	void Set_update_checkForFirmwareVersion();
-	void Reset_update_checkForFirmwareVersion();
-	int ThreadStartSendResponseForFirmwareView(const std::string strTopic, std::string strTid);
-	void thread_function_for_send_response_for_firmwareVersion(int maxChannel, const std::string strTopic, std::string strTid);
+	void Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
+	void Reset_update_check_Firmware_Ver_info_ForFirmwareVersion();
+
+	int ThreadStartSendResponseForFirmwareView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
+	void thread_function_for_send_response_for_firmwareVersion(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 
 	// 4. firmware update
-	void SendResponseForUpdateFirmware(const std::string& strTopic, std::string strTid, std::vector<int> updateChannel);
+	void SendResponseForUpdateFirmware(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid,
+										int resCode, int rawCode, std::vector<int> updateChannel);
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
