@@ -45,16 +45,17 @@ BridgeManager::~BridgeManager() {
 
 int BridgeManager::file_exit(std::string& filename)
 {
-	FILE* file;
-	if ((file = fopen(filename.c_str(), "r")))
+	FILE* p_file = NULL;
+//	if ((p_file = fopen(filename.c_str(), "r")))
+	if ((0 == fopen_s(&p_file, filename.c_str(), "r")))
 	{
-		fclose(file);
+		fclose(p_file);
 		return 1;
 	}
 	return 0;
 }
 
-void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strDeviceKey)
+void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {
 	bool result = false;
 
@@ -132,7 +133,7 @@ void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strD
 
 #if 1  // for dashboard
 	// using std::unique_ptr
-	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id);
+	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id, nWebPort);
 	mSUNAPI_manager_->RegisterObserverForHbirdManager(this);
 
 	gMax_Channel = mSUNAPI_manager_->GetMaxChannel();

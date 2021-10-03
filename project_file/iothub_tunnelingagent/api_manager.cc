@@ -124,7 +124,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, std::string strR
 CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
 #endif
 {
-	int startTimeOfCameraDiscovery = time(NULL);
+	time_t startTimeOfCameraDiscovery = time(NULL);
 	std::cout << "CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCameraDiscovery << std::endl;
 
 	struct MemoryStruct chunk;
@@ -199,15 +199,13 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 			long response_code;
 			curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
 			//printf("response code : %d\n", res);
-			if ((response_code != 200) || ((long)chunk.size == 0)) // 200 ok , 301 moved , 404 error
-			{
-				// default channel
-				res = CURLE_CHUNK_FAILED;
-			}
-			else
+
+			if ((long)chunk.size != 0) // 200 ok , 301 moved , 404 error
 			{
 				// OK
 				*strResult = chunk.memory;
+
+				printf("CURL_Process() -> strResult : \n%s\n", chunk.memory);
 			}
 		}
 		curl_easy_cleanup(curl_handle);
@@ -222,7 +220,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 	/* we're done with libcurl, so clean it up */
 	curl_global_cleanup();
 
-	int endTimeOfCameraDiscovery = time(NULL);
+	time_t endTimeOfCameraDiscovery = time(NULL);
 	std::cout << "CURL_Process() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCameraDiscovery << " -> " <<
 		(long int)(endTimeOfCameraDiscovery - startTimeOfCameraDiscovery) << std::endl;
 
@@ -899,7 +897,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 							}
 
 							// get detail
-							char* charErrorDetails;
+							char* charErrorDetails = NULL;
 							result = json_unpack(json_subError, "{s:s}", "Details", charErrorDetails);
 
 							if (result)
@@ -990,10 +988,11 @@ size_t APIManager::WriteMemoryCallback(void *contents, size_t size, size_t nmemb
 
 int APIManager::file_exit(std::string& filename)
 {
-	FILE* file;
-	if ((file = fopen(filename.c_str(), "r")))
+	FILE* p_file = NULL;
+	//	if ((p_file = fopen(filename.c_str(), "r")))
+	if ((0 == fopen_s(&p_file, filename.c_str(), "r")))
 	{
-		fclose(file);
+		fclose(p_file);
 		return 1;
 	}
 	return 0;

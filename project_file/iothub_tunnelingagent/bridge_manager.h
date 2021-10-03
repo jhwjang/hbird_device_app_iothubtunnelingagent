@@ -17,7 +17,7 @@ public:
 	BridgeManager();
 	~BridgeManager();
 
-	void StartBridgeManager(std::string strDeviceID, std::string strDeviceKey);
+	void StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort);
 
 	virtual void OnMQTTServerConnectionSuccess(void);
 

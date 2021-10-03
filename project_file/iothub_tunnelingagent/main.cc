@@ -161,25 +161,32 @@ int main(int argc, char* argv[])
 
 #if 1  // main agent version for test
 	printf("\n###############################################################\n");
-	printf("mainagent 0.0.1 , 2 Aug 2021\npre-installed version\n");
+	printf("mainagent 0.0.1 , 2021.10.01_1\npre-installed version\n");
 	printf("\n###############################################################\n");
 #else
 	printf("\n###############################################################\n");
-	printf("mainagent 0.0.2 , 7 Sep 2021\ncloud update version\n");
+	printf("mainagent 0.0.2 , 2021.10.01_1\ncloud update version\n");
 	printf("\n###############################################################\n");
 #endif
-
+	int nWebPort = 443;
 	int agent_mode = 0;
 	std::string strMode, strDeviceID, strDeviceKey;
 	if (argc > 1)
 	{
+#if 0
 		strMode = argv[1];
 		agent_mode = std::stoi(strMode);
+#else
+		agent_mode = std::atoi(argv[1]);
+#endif
 
 		if (argc > 3)
 		{
 			strDeviceID = argv[2];
 			strDeviceKey = argv[3];
+
+			if(argv[4])
+				nWebPort = std::atoi(argv[4]);
 		}
 		else
 		{
@@ -205,7 +212,7 @@ int main(int argc, char* argv[])
 	std::cout << "Cloud Agent Start ... mode : " << agent_mode << std::endl;
 
 	MainManager* mainManager = new MainManager();
-	mainManager->StartMainManager(agent_mode, strDeviceID, strDeviceKey);
+	mainManager->StartMainManager(agent_mode, strDeviceID, strDeviceKey, nWebPort);
 
 	thread_start();
 

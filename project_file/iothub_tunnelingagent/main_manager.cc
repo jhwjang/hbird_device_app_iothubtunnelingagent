@@ -32,16 +32,15 @@ MainManager::~MainManager() {
 		delete broker_handler_;
 }
 
-void MainManager::StartMainManager(int mode, std::string strDeviceID, std::string strDeviceKey)
+void MainManager::StartMainManager(int mode, std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {
-
 	switch (mode)
 	{
 		case 0:  // all mode
 		{
 			// bridge mode
 			bridge_handler_ = new BridgeManager();
-			ThreadStartForbridgeManager(strDeviceID, strDeviceKey);
+			ThreadStartForbridgeManager(strDeviceID, strDeviceKey, nWebPort);
 			
 			// broker mode
 			broker_handler_ = new BrokerManager();
@@ -52,7 +51,7 @@ void MainManager::StartMainManager(int mode, std::string strDeviceID, std::strin
 		case 1:  // bridge mode
 		{
 			bridge_handler_ = new BridgeManager();
-			ThreadStartForbridgeManager(strDeviceID, strDeviceKey);
+			ThreadStartForbridgeManager(strDeviceID, strDeviceKey, nWebPort);
 			break;
 		}
 		case 2:  // broker mode
@@ -66,17 +65,17 @@ void MainManager::StartMainManager(int mode, std::string strDeviceID, std::strin
 	}
 }
 
-int MainManager::ThreadStartForbridgeManager(std::string strDeviceID, std::string strDeviceKey)
+int MainManager::ThreadStartForbridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {
-	std::thread thread_function_for_bridge([=] { thread_function_for_bridgeManager(strDeviceID, strDeviceKey); });
+	std::thread thread_function_for_bridge([=] { thread_function_for_bridgeManager(strDeviceID, strDeviceKey, nWebPort); });
 	thread_function_for_bridge.detach();
 
 	return 0;
 }
 
-void MainManager::thread_function_for_bridgeManager(std::string strDeviceID, std::string strDeviceKey)
+void MainManager::thread_function_for_bridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {
-	bridge_handler_->StartBridgeManager(strDeviceID, strDeviceKey);
+	bridge_handler_->StartBridgeManager(strDeviceID, strDeviceKey, nWebPort);
 }
 
 

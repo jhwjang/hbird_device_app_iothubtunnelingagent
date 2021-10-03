@@ -57,16 +57,18 @@ typedef struct firmware_update_Info {
 //  - das_enable , das_overwrite
 
 typedef struct storage_Info {
-	bool update_check;	
+	bool update_check;
 	bool das_presence;
 	bool sdfail;
 	bool nas_presence;
 	bool nasfail;
 	bool das_enable;			// on or off of DAS recording
 	bool nas_enable;			// on or off of NAS recording
+	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError
 	int curl_responseCode;
 	std::string das_status;  // normal, Active, SDfailure, ... , timeout, authError
 	std::string nas_status;  // normal, Active, failure, timeout, authError
+	std::string ConnectionStatus;  // Disconnected , Success , ConnectFail
 } Storage_Infos;
 
 
@@ -79,30 +81,37 @@ typedef struct storage_Info {
 //  - LinkStatus , IPv4Address , MACAddess
 
 typedef struct gateway_Info {
+	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	int curl_responseCode;
 	int WebPort;
-	std::string Model;
+	std::string DeviceModel;
 	std::string IPv4Address;
 	std::string MACAddress;
 	std::string FirmwareVersion;
-	std::string connectionStatus;
+	std::string ConnectionStatus;
 } GatewayInfo;
 
-typedef struct channel_Info {
-	bool update_check_deviceinfo;
-	bool update_check_networkinterface;	
-	bool IsBypassSupported;		
-	int curl_responseCode;
-	int ConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 
-	int HTTPPort;	
-	std::string ChannelStatus; // Disconnected , Success , ConnectFail
-	std::string Model;			// camera model
-	std::string DeviceName;		// 21.09.06 add - sub device name
+typedef struct networkinterface_Info {
+	bool update_check_networkinterface;
+	std::string ConnectionStatus; // Disconnected , Success , ConnectFail
 	std::string LinkStatus;		// Connected , Disconnected
 	std::string IPv4Address;
 	std::string MACAddress;
-	std::string FirmwareVersion;
-	std::string UserID;			// admin
+} SubDevice_NetworkInterface_Info;
+
+typedef struct channel_Info {
+	bool update_check_deviceinfo;
+	bool IsBypassSupported;		
+	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
+	int curl_responseCode;
+	int HTTPPort;	
+	std::string ConnectionStatus; // Disconnected , Success , ConnectFail
+	std::string DeviceModel;	// camera model
+	std::string DeviceName;		// 21.09.06 add - sub device name
+	SubDevice_NetworkInterface_Info NetworkInterface;
+	//std::string LinkStatus;		// Connected , Disconnected
+	//std::string IPv4Address;
+	//std::string MACAddress;
 } Channel_Infos;
 
 
@@ -124,7 +133,7 @@ struct ISUNAPIManagerObserver {
 class sunapi_manager
 {
 public:
-	sunapi_manager(const std::string& strDeviceID);
+	sunapi_manager(const std::string& strDeviceID, int nWebPort);
 	~sunapi_manager();
 
 	void RegisterObserverForHbirdManager(ISUNAPIManagerObserver* callback);
@@ -169,6 +178,7 @@ protected:
 	//update
 	void UpdateStorageInfos();
 	void UpdateSubdeviceInfos();
+	void UpdateSubdeviceNetworkInterfaceInfos();
 	void UpdateFirmwareVersionInfos();
 
 	int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
@@ -278,11 +288,12 @@ protected:
 
 
 private:
-	int gMax_Channel;
+	int g_Max_Channel;
 	std::string g_Device_id;
 
-	std::string gStrDeviceIP;
-	std::string gStrDevicePW;
+	std::string g_StrDeviceIP;
+	std::string g_StrDevicePW;
+	int g_WebPort;
 
 	int g_Sub_camera_reg_Cnt;
 	int g_Sub_network_info_Cnt;
@@ -298,7 +309,6 @@ private:
 	time_t g_UpdateTimeForFirmwareVersionOfSubdevices; // for 3. firmware version
 	 
 	time_t g_UpdateTimeForDashboardAPI;
-	time_t g_UpdateTimeOut;
 
 	ISUNAPIManagerObserver* observerForHbirdManager;
 
