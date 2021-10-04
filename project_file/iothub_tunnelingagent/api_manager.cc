@@ -124,8 +124,8 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, std::string strR
 CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
 #endif
 {
-	time_t startTimeOfCameraDiscovery = time(NULL);
-	std::cout << "CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCameraDiscovery << std::endl;
+	time_t startTimeOfCURL_Process = time(NULL);
+	std::cout << "APIManager::CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCURL_Process << std::endl;
 
 	struct MemoryStruct chunk;
 
@@ -138,8 +138,8 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl_handle = curl_easy_init();
 
-#if 0  // 2019.09.05 hwanjang - sunapi debugging
-	printf("curl_process() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
+#if 1  // 2019.09.05 hwanjang - sunapi debugging
+	printf("APIManager::curl_process() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
 #endif
 
 	if (curl_handle)
@@ -188,7 +188,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* check for errors */
 		if (res != CURLE_OK)
 		{
-			printf("curl_process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
+			printf("APIManager::CURL_Process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
 		}
 		else
 		{
@@ -205,7 +205,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 				// OK
 				*strResult = chunk.memory;
 
-				printf("CURL_Process() -> strResult : \n%s\n", chunk.memory);
+				printf("APIManager::CURL_Process() -> strResult : \n%s\n", chunk.memory);
 			}
 		}
 		curl_easy_cleanup(curl_handle);
@@ -220,9 +220,9 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 	/* we're done with libcurl, so clean it up */
 	curl_global_cleanup();
 
-	time_t endTimeOfCameraDiscovery = time(NULL);
-	std::cout << "CURL_Process() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCameraDiscovery << " -> " <<
-		(long int)(endTimeOfCameraDiscovery - startTimeOfCameraDiscovery) << std::endl;
+	time_t endTimeOfCURL_Process = time(NULL);
+	std::cout << "APIManager::CURL_Process() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCURL_Process << " -> " <<
+		(long int)(endTimeOfCURL_Process - startTimeOfCURL_Process) << std::endl;
 
 	return res;
 }
@@ -868,7 +868,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 			}
 			else
 			{
-				printf("SUNAPITunnelingCommand() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
+				//printf("SUNAPITunnelingCommand() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
 
 				if (strSUNAPIResult.find("Detatils") != std::string::npos)
 				{
