@@ -116,7 +116,8 @@ typedef struct channel_Info {
 
 
 typedef struct firmware_version_Info {
-	bool update_check;
+	bool fw_update_check;
+	bool last_fw_update_check;
 	int curl_responseCode;
 	std::string FirmwareVersion;
 	std::string LatestFirmwareVersion;
@@ -226,7 +227,7 @@ protected:
 	// 2. deviceinfo view	
 
 	// 21.09.06 add - sub device name
-	bool GetDeviceNameOfSubdevices();
+	bool GetDeviceInfoOfSubdevices();
 	int ThreadStartForSubDeviceInfo(int index, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_subdevice_info(int index, const std::string deviceIP, const std::string devicePW);
 
