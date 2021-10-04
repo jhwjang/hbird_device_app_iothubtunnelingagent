@@ -160,14 +160,25 @@ int main(int argc, char* argv[])
 #endif
 
 #if 1  // main agent version for test
+	struct tm* curr_tm;
+	time_t curr_time = time(NULL);
+
+	//localtime_r(&curr_time, &curr_tm);
+	curr_tm = localtime(&curr_time);
+
+#if 1  // ver 0.0.1
 	printf("\n###############################################################\n");
-	printf("mainagent 0.0.1 , 2021.10.01_1\npre-installed version\n");
+	printf("\nmainagent 0.0.1 , %d.%d.%d , %d:%d:%d\npre-installed version\n",
+		(curr_tm->tm_year + 1900), (curr_tm->tm_mon + 1), curr_tm->tm_mday, curr_tm->tm_hour, curr_tm->tm_min, curr_tm->tm_sec);
 	printf("\n###############################################################\n");
-#else
+#else // ver 0.0.2
 	printf("\n###############################################################\n");
-	printf("mainagent 0.0.2 , 2021.10.01_1\ncloud update version\n");
+	printf("\nmainagent 0.0.2 , %d.%d.%d , %d:%d:%d\ncloud update version\n",
+		(curr_tm->tm_year + 1900), (curr_tm->tm_mon + 1), curr_tm->tm_mday, curr_tm->tm_hour, curr_tm->tm_min, curr_tm->tm_sec);
 	printf("\n###############################################################\n");
 #endif
+#endif  // end of version
+
 	int nWebPort = 443;
 	int agent_mode = 0;
 	std::string strMode, strDeviceID, strDeviceKey;
