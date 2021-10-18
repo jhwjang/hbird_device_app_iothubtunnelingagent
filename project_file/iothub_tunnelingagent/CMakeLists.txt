@@ -10,9 +10,6 @@ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 # JANSSON
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/jansson)
 
-# cloudgateway_config
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/cloudgateway_config)
-
 # CURL
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/curl-7.75.0)
 
@@ -104,19 +101,12 @@ set_target_properties(staticlib_cxx_paho PROPERTIES
 set_target_properties(staticlib_cxx_paho PROPERTIES
           IMPORTED_LOCATION_DEBUG ${THIRD_PARTY_DIR_LIB_DEBUG}/paho-mqttpp3-static.lib)
 
-## cloudgateway_config
-add_library(staticlib_cloudgateway_config STATIC IMPORTED)
-set_target_properties(staticlib_cloudgateway_config PROPERTIES
-          IMPORTED_LOCATION_RELEASE ${THIRD_PARTY_DIR_LIB_RELEASE}/libcloudgateway_config.lib)	
-set_target_properties(staticlib_cloudgateway_config PROPERTIES
-          IMPORTED_LOCATION_DEBUG ${THIRD_PARTY_DIR_LIB_DEBUG}/libcloudgateway_config.lib)
-
 target_link_libraries( iothub_tunnelingagent PUBLIC 
 	WS2_32
 	Wldap32
 	Normaliz
 	iphlpapi
-	staticlib_jansson staticlib_crypto staticlib_ssl staticlib_curl staticlib_c_paho staticlib_cxx_paho staticlib_cloudgateway_config
+	staticlib_jansson staticlib_crypto staticlib_ssl staticlib_curl staticlib_c_paho staticlib_cxx_paho
 )
 	
 target_compile_options( iothub_tunnelingagent PRIVATE "$<$<CONFIG:Debug>:/MTd>")
@@ -168,12 +158,6 @@ add_library(lib_cxx_paho SHARED IMPORTED)
 set_target_properties(lib_cxx_paho PROPERTIES
     IMPORTED_LOCATION ${THIRD_PARTY_DIR_LIB_PATH}/libpaho-mqttpp3.so)
 
-## cloudgateway_config
-add_library(lib_cloudgateway_config SHARED IMPORTED)
-set_target_properties(lib_cloudgateway_config PROPERTIES
-    IMPORTED_LOCATION ${THIRD_PARTY_DIR_LIB_PATH}/libcloudgateway_config.so)
-
-
 link_directories("${THIRD_PARTY_DIR_LIB_PATH}")
 
 target_link_libraries( iothub_tunnelingagent PUBLIC
@@ -183,7 +167,6 @@ target_link_libraries( iothub_tunnelingagent PUBLIC
     lib_curl
     lib_c_as_paho
     lib_cxx_paho
-    lib_cloudgateway_config
 )
 
 set_target_properties( iothub_tunnelingagent
