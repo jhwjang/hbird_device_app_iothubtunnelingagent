@@ -59,10 +59,10 @@
         //char url_[1024]={0,};
         char* url_;
         url_ = new char[url_size+1];
-#ifdef _MSV_VER
-        strncpy_s(url_, sizeof(url_), url, sizeof(url));
+#ifdef _MSC_VER
+        strncpy_s(url_, url_size, url, url_size);
 #else
-        strncpy(url_, url, url_size);
+        strncpy(url_, url, url_size);       
 #endif
         
         printf("** url : %s\n", url_);     
@@ -119,7 +119,7 @@
         curl_global_cleanup();
 #endif  
 
-        delete url_;
+        delete[] url_;
 
         return 0;
     };

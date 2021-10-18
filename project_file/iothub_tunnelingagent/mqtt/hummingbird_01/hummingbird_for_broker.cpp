@@ -162,7 +162,7 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 		lastConnectionTime = now_sec;
 
     diff_sec = now_sec - lastConnectionTime;
-    printf("[hwanjang] diff_sec : %ld\n", diff_sec);
+    printf("[hwanjang] diff_sec : %lld\n", diff_sec);
 		
 	srand((unsigned)time(NULL));
     if(diff_sec < 1200)  // 1200 -> 20 min
