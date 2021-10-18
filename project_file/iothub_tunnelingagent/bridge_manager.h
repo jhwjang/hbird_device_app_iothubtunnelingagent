@@ -8,7 +8,7 @@
 #include "api_manager.h"
 #include "mqtt_manager.h"
 
-#include "config_manager.h"
+//#include "config_manager.h"
 #include "sunapi_manager.h"
 
 class BridgeManager : public IMQTTManagerObserver,
@@ -53,7 +53,7 @@ private:
 	//ConfigManager* mConfig_manager_;
 	//APIManager* mAPI_manager_;
 
-	std::unique_ptr<ConfigManager> mConfig_manager_;
+	//std::unique_ptr<ConfigManager> mConfig_manager_;
 	std::unique_ptr<APIManager> mAPI_manager_;
 
 	std::unique_ptr<sunapi_manager> mSUNAPI_manager_;

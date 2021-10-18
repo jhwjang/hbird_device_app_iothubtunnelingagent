@@ -21,7 +21,7 @@ BridgeManager::BridgeManager() {
 
 	mMQTT_manager_ = nullptr;
 	mAPI_manager_ = nullptr;
-	mConfig_manager_ = nullptr;
+//	mConfig_manager_ = nullptr;
 
 	gMax_Channel = 0;
 
@@ -66,7 +66,7 @@ void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strD
 	std::string device_id = strDeviceID;
 	std::string	device_key = strDeviceKey;
 
-#if 1 // for test
+#if 0 // for test
 
 	if (strDeviceID.find("file") != std::string::npos)
 	{
