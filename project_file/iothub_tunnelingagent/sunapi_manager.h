@@ -121,6 +121,7 @@ typedef struct firmware_version_Info {
 	int curl_responseCode;
 	std::string FirmwareVersion;
 	std::string LatestFirmwareVersion;
+	std::string UpgradeStatus;
 } Firmware_Version_Infos;
 
 
@@ -253,7 +254,8 @@ protected:
 
 	bool GetFirmwareVersionFromText(std::string strText, std::string* strResult);
 
-	int GetFirmwareVersionOfSubdevices();
+	bool GetFirmwareVersionOfSubdevices();
+	bool GetFirmwareVersionOfSubdevices(const std::string deviceIP, const std::string devicePW, CURLcode* resCode);
 
 	int ThreadStartForFirmwareVersion(int channel, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_firmware_version(int channel, const std::string deviceIP, const std::string devicePW);
@@ -308,8 +310,6 @@ private:
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info
 
 	time_t g_UpdateTimeForFirmwareVersionOfSubdevices; // for 3. firmware version
-	 
-	time_t g_UpdateTimeForDashboardAPI;
 
 	ISUNAPIManagerObserver* observerForHbirdManager;
 

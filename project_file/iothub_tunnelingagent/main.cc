@@ -59,7 +59,7 @@ bool Check_Bind()
 
 void Checkfilelock()
 {
-	std::string file_name = "config/processChecker.txt";
+	std::string file_name = "config/MainAgentChecker.txt";
 
 	HANDLE indexHandle = CreateFile(file_name.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, 0,
 		OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -159,25 +159,16 @@ int main(int argc, char* argv[])
 	Checkfilelock();
 #endif
 
-#if 1  // main agent version for test
-	struct tm* curr_tm;
-	time_t curr_time = time(NULL);
-
-	//localtime_r(&curr_time, &curr_tm);
-	curr_tm = localtime(&curr_time);
-
 #if 1  // ver 0.0.1
 	printf("\n###############################################################\n");
-	printf("\nmainagent 0.0.1 , %d.%d.%d , %d:%d:%d\npre-installed version\n",
-		(curr_tm->tm_year + 1900), (curr_tm->tm_mon + 1), curr_tm->tm_mday, curr_tm->tm_hour, curr_tm->tm_min, curr_tm->tm_sec);
+	printf("\nmainagent 0.0.1 , %s , %s\npre-installed version\n", __DATE__, __TIME__);
 	printf("\n###############################################################\n");
 #else // ver 0.0.2
 	printf("\n###############################################################\n");
-	printf("\nmainagent 0.0.2 , %d.%d.%d , %d:%d:%d\ncloud update version\n",
-		(curr_tm->tm_year + 1900), (curr_tm->tm_mon + 1), curr_tm->tm_mday, curr_tm->tm_hour, curr_tm->tm_min, curr_tm->tm_sec);
+	printf("\nmainagent 0.0.2 , %s , %s\ncloud update version\n", __DATE__, __TIME__);
 	printf("\n###############################################################\n");
-#endif
 #endif  // end of version
+
 
 	int nWebPort = 443;
 	int agent_mode = 0;
@@ -212,6 +203,7 @@ int main(int argc, char* argv[])
 		strDeviceID = "file";
 		strDeviceKey = "file";
 	}
+
 
 #if 0 // ori
 	if ((agent_mode < 0) && (agent_mode > 2))
