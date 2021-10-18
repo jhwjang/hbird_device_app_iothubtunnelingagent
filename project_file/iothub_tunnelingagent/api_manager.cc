@@ -8,7 +8,8 @@
 #include <vector>
 
 #include "api_manager.h"
-#include "NetworkAdapter_manager.h"
+//#include "NetworkAdapter_manager.h"
+
 #include "win_time.h"
 
 using namespace std;
@@ -18,8 +19,9 @@ using std::this_thread::sleep_for;
 #define TEST_DEVICE_ADDRESS "192.168.11.5"  // for my device
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-#define CURL_TIMEOUT 5 
-#define CURL_CONNECTION_TIMEOUT 3  
+//#define CURL_TIMEOUT 5 
+#define CURL_TIMEOUT 10 
+#define CURL_CONNECTION_TIMEOUT 5  
 
 #if 0
 // QA
@@ -148,6 +150,9 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		struct curl_slist* headers = NULL;
 		//headers = curl_slist_append(headers, "cache-control:no-cache");
 		//headers = curl_slist_append(headers, "Content-Type: application/json");
+
+		headers = curl_slist_append(headers, "Connection: Keep-Alive");
+
 		if (json_mode)
 			headers = curl_slist_append(headers, "Accept: application/json");
 		else
@@ -809,6 +814,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	{
 		timeout = 0;
 	}
+
 	CURLcode res = CURL_Process(json_mode, ssl_opt, timeout, strRepuest, gStrDevicePW, &strSUNAPIResult);
 #endif
 
