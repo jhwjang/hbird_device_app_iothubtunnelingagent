@@ -803,10 +803,10 @@ void sunapi_manager::UpdateFirmwareVersionInfos()
 			if(g_Worker_Firmware_Ver_info_[i].FirmwareVersion.empty() != true)
 				g_Firmware_Ver_info_[i].FirmwareVersion = g_Worker_Firmware_Ver_info_[i].FirmwareVersion;
 
-			if (g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.empty() != true)
+			if(g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.empty() != true)
 				g_Firmware_Ver_info_[i].LatestFirmwareVersion = g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion;
 
-			if (g_Worker_Firmware_Ver_info_[i].UpgradeStatus.empty() != true)
+			if(g_Worker_Firmware_Ver_info_[i].UpgradeStatus.empty() != true)
 				g_Firmware_Ver_info_[i].UpgradeStatus = g_Worker_Firmware_Ver_info_[i].UpgradeStatus;
 		}
 	}
@@ -1494,6 +1494,18 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 
 	sleep_for(std::chrono::milliseconds(1 * 100));
 #else
+
+	// update gateway info
+	if((g_Gateway_info_->MACAddress == "unknown") || g_Gateway_info_->MACAddress.empty())
+	{
+		bool ret = GetNetworkInterfaceOfGateway();
+
+		// error ??
+		if(!ret)
+		{
+			printf("[hwanjang] sunapi_manager::GetDeviceInfoView() -> Failed to update gateway info !!!\n");
+		}
+	}
 
 	// add Device Name
 	GetDeviceInfoOfSubdevices();
