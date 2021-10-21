@@ -12,16 +12,25 @@
 
 #define USER_ACCESS_TOKEN "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJodHd1LWI0MjAyMTUyLWJjZTYtNGI2MS1iNmYyLTBmOWE0YWQ1ZjcxMiIsImxvY2F0aW9uIjoidXMtd2VzdC0xIiwidXNlclN0YXR1cyI6InZlcmlmaWVkIiwidHNpIjoiMDk2MTc2ODAtN2I5Mi00MGExLTkxYWUtNTU2OTEwNDRmNTkzIiwic2NvcGUiOiJkZXZpY2UuaHR3ZDAwZDhjYjhhZjY1Mzc4Lm93bmVyIiwiaWF0IjoxNjIxMjQ1MTYyLCJleHAiOjE2MjEyNTIzNjEsImlzcyI6Imh0dzIuaGJpcmQtaW90LmNvbSIsImp0aSI6ImJkMzcyMjY1LWYxYzYtNDE4OS1iM2VmLTE4NmRlYTUxZTRhOSJ9.Z14Ot0SDGuSJVeiCFoEr-FrBk5JFHXyXnYFvnPYgwV3MxWBb8T9-KyKIYbtVMRJoEY9o4vyIQp7SGzcU7g18C0-B2Gmc3YmwDdDJWftXBtt7H-Pf6_bkNYGVUjfZBUd_hC-zneNEW_pexW3Gz6ZUJp3UnhjC0YMh591WM8alA7L5mwYIqMqrRbsRt3LFV4W5rCnKqUm7fRgoLkc9LBpTXfly3Q1JqYHGeCdNB_34h_y8oPVh-FZPBQyRxLTAt9uxwya_p9u-Tvs8FvLoDBZEDbz65p3wEKiyp7hp_gRHwoB8yBgIam6Qb9vwG4D42YVOVUGMp0pX-MkkiYcrorJdqQ"
 
-
 BrokerManager::BrokerManager() {
-
-	printf("[hwanjang] MainManager -> constructor !!!\n");
+	printf("[hwanjang] BrokerManager -> constructor !!!\n");
 
 	mMQTT_manager_for_broker_ = nullptr;
 }
 
+BrokerManager::BrokerManager(std::string broker_agent_id, std::string broker_agent_key) {
+
+	printf("[hwanjang] BrokerManager -> constructor ... \nbroker_agent_id : %s\nbroker_agent_key : %s\n", 
+							broker_agent_id.c_str(), broker_agent_key.c_str());
+
+	mMQTT_manager_for_broker_ = nullptr;
+
+	g_broker_agent_id = broker_agent_id;
+	g_broker_agent_key = broker_agent_key;
+}
+
 BrokerManager::~BrokerManager() {
-	printf("[hwanjang] MainManager::~MainManager() -> Destructor !!!\n");
+	printf("[hwanjang] BrokerManager::~BrokerManager() -> Destructor !!!\n");
 
 	if (mMQTT_manager_for_broker_)
 		delete mMQTT_manager_for_broker_;
@@ -29,11 +38,9 @@ BrokerManager::~BrokerManager() {
 
 void BrokerManager::StartBrokerManager()
 {
-	// temp
-	std::string agent_id = "app-mainagent";  // cloud agent ID
-	std::string agent_key = "agentKey";
+	std::cout << "BrokerManager::StartBrokerManager() -> Init_MQTT ... " << std::endl;
 
-	if (!Init_MQTT(agent_id, agent_key))
+	if (!Init_MQTT(g_broker_agent_id, g_broker_agent_key))
 	{
 		printf("[hwanjang] * * *Error !!! StartBrokerManager() ->  server-> MQTT_Init is failed !! -- > exit !!!\n");
 		exit(1);

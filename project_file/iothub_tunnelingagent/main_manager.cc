@@ -34,6 +34,10 @@ MainManager::~MainManager() {
 
 void MainManager::StartMainManager(int mode, std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {
+	// temp -  broker ID
+	std::string broker_agent_id = "app-mainagent";  // cloud agent ID
+	std::string broker_agent_key = "agentKey";
+
 	switch (mode)
 	{
 		case 0:  // all mode
@@ -41,9 +45,9 @@ void MainManager::StartMainManager(int mode, std::string strDeviceID, std::strin
 			// bridge mode
 			bridge_handler_ = new BridgeManager();
 			ThreadStartForbridgeManager(strDeviceID, strDeviceKey, nWebPort);
-			
+
 			// broker mode
-			broker_handler_ = new BrokerManager();
+			broker_handler_ = new BrokerManager(broker_agent_id, broker_agent_key);
 			ThreadStartForbrokerManager();
 
 			break;
@@ -56,14 +60,15 @@ void MainManager::StartMainManager(int mode, std::string strDeviceID, std::strin
 		}
 		case 2:  // broker mode
 		{
-			broker_handler_ = new BrokerManager();
-			ThreadStartForbrokerManager();			
+			broker_handler_ = new BrokerManager(broker_agent_id, broker_agent_key);
+			ThreadStartForbrokerManager();
 			break;
 		}
-		default : 
+		default:
 			break;
 	}
 }
+
 
 int MainManager::ThreadStartForbridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort)
 {

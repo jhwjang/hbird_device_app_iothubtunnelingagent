@@ -11,6 +11,8 @@ class BrokerManager : public IMQTTManagerObserver_for_broker
 {
 public:
 	BrokerManager();
+	BrokerManager(std::string broker_agent_id, std::string broker_agent_key);
+
 	~BrokerManager();
 
 	void StartBrokerManager();
@@ -38,6 +40,10 @@ private:
 	MQTTManager_for_broker* mMQTT_manager_for_broker_;
 
 	std::string mMqtt_server_;
+
+	// temp
+	std::string g_broker_agent_id;
+	std::string g_broker_agent_key;
 };
 
 #endif // 

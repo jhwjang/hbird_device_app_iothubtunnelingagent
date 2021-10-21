@@ -154,7 +154,6 @@ int hummingbird_topic_sub_Connect::mqtt_response(mqtt::const_message_ptr msg){
     callback_->OnReceiveTopicMessage(msg);
 #endif
 
-
     return 0;
 }
 

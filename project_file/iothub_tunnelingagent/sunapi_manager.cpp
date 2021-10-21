@@ -342,6 +342,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 		if (strSUNAPIResult.empty())
 		{
 			// strSUNAPIResult is empty ...
+			printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> strSUNAPIResult is empty !!!\n");
 			return false;
 		}
 		else
@@ -354,7 +355,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 				fprintf(stderr, "error : root\n");
 				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-				printf("sunapi_manager::GetNetworkInterfaceOfGateway() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
+				printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
 
 				return false;
 			}
@@ -482,6 +483,9 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 						else
 						{
 							// other network ...
+							printf("[hwanjang] Error !! GetNetworkInterfaceOfGateway() -> charInterface is not Network1 !!!\n");
+
+							printf("strSUNAPIResult : %s\n", strSUNAPIResult.c_str());
 						}
 					}
 				}
@@ -498,17 +502,20 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 			// authfail
 			strError = "authError";
 			g_Gateway_info_->ConnectionStatus = "authError";
+
+			printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> authError !!!\n");
 		}
 		else if (resCode == CURLE_OPERATION_TIMEDOUT)
 		{
 			// timeout
+			printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> timeout !!!\n");
 		}
 		else {
 			// another error		
 			//strError = "unknown";
 			strError = curl_easy_strerror(resCode);
 
-			printf("GetNetworkInterfaceOfGateway() -> CURL_Process fail .. strError : %s\n", strError.c_str());
+			printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> CURL_Process fail .. strError : %s\n", strError.c_str());
 			g_Gateway_info_->ConnectionStatus = "unknown";
 		}
 	}
@@ -759,7 +766,8 @@ void sunapi_manager::UpdateSubdeviceInfos()
 			if(g_Worker_SubDevice_info_[i].DeviceModel.empty() != true)
 				g_SubDevice_info_[i].DeviceModel = g_Worker_SubDevice_info_[i].DeviceModel;
 
-			g_SubDevice_info_[i].DeviceName = g_Worker_SubDevice_info_[i].DeviceName;
+			if(g_Worker_SubDevice_info_[i].DeviceName.empty() != true)
+				g_SubDevice_info_[i].DeviceName = g_Worker_SubDevice_info_[i].DeviceName;
 
 			printf("UpdateSubdeviceInfos() -> index : %d , DeviceModel : %s, DeviceName : %s\n", i, g_SubDevice_info_[i].DeviceModel.c_str(), g_SubDevice_info_[i].DeviceName.c_str());
 		}
@@ -798,7 +806,8 @@ void sunapi_manager::UpdateFirmwareVersionInfos()
 			if (g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.empty() != true)
 				g_Firmware_Ver_info_[i].LatestFirmwareVersion = g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion;
 
-			g_Firmware_Ver_info_[i].UpgradeStatus = g_Worker_Firmware_Ver_info_[i].UpgradeStatus;
+			if (g_Worker_Firmware_Ver_info_[i].UpgradeStatus.empty() != true)
+				g_Firmware_Ver_info_[i].UpgradeStatus = g_Worker_Firmware_Ver_info_[i].UpgradeStatus;
 		}
 	}
 }
@@ -4303,7 +4312,6 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 		return;
 	}
 
-#if 1
 	std::string strMQTTMsg;
 	std::string strCommand, strType, strView, strTid, strVersion;
 
@@ -4423,10 +4431,8 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 
 	strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	printf("[hwanjang APIManager::CommandCheckPassword()() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	printf("[hwanjang] APIManager::CommandCheckPassword() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseToPeer(strTopic, strMQTTMsg);
-	
-#endif
 
 }
