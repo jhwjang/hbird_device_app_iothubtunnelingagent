@@ -119,6 +119,11 @@ set_target_properties( iothub_tunnelingagent
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}/bin"
 )
 
+set_target_properties( iothub_tunnelingagent
+  PROPERTIES 
+  LINK_FLAGS "/MANIFESTUAC:\"level='requireAdministrator' uiAccess='false'\" "
+)
+
 # TODO: 필요한 경우 테스트를 추가하고 대상을 설치합니다.
 
   set(CMAKE_EXE_LINKER_FLAGS_DEBUG
