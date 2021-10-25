@@ -14,10 +14,10 @@ using namespace std;
 using std::this_thread::sleep_for;
 
 #if 1
-hummingbird_for_broker::hummingbird_for_broker(mqtt::async_client* cli, mqtt::connect_options& connOpts, const std::string app_id)
-	: nretry_(0),  connOpts_(connOpts), subListener_("Subscription") {
-	cli_ = cli;
-	app_id_ = app_id;
+hummingbird_for_broker::hummingbird_for_broker(mqtt::async_client* client, mqtt::connect_options& connOpts, const std::string app_id)
+	: nretry_(0), g_connOpts_(connOpts), subListener_("Subscription") {
+	g_async_client = client;
+	g_app_id_ = app_id;
 
 	lastConnectionTime = 0;
 	gHummingbirdStart = false;
@@ -34,14 +34,14 @@ hummingbird_for_broker::hummingbird_for_broker(mqtt::async_client* cli,hummingbi
 
 
 void hummingbird_for_broker::connect(){
-printf("[hwanjang] hummingbird_for_broker::connect() -> Start ..\n");
+	printf("[hwanjang] hummingbird_for_broker::connect() -> Start ..\n");
 
 #if 0
 	cli_->set_callback(*this);
 	cli_->connect(connOpts_, nullptr, *this);
 #else	
-	cli_->set_callback(*this);
-	cli_->connect(connOpts_, nullptr, *this);
+	g_async_client->set_callback(*this);
+	g_async_client->connect(g_connOpts_, nullptr, *this);
 	cout << "Waiting for the connection..." << endl;
 
 	//cout << "[hwanjang] hummingbird_for_broker::connect() ->  ...OK" << endl;
@@ -49,7 +49,7 @@ printf("[hwanjang] hummingbird_for_broker::connect() -> Start ..\n");
 }    
 
 void hummingbird_for_broker::disconnect(){
-	cli_->disconnect()->wait();
+	g_async_client->disconnect()->wait();
 }
 
 int hummingbird_for_broker::get_pub_topic_instance(string topic)
@@ -76,20 +76,11 @@ int hummingbird_for_broker::get_sub_topic_instance(string topic)
 	return -1 ;
 }
 
-std::string hummingbird_for_broker::create_topic(int mode, const std::string topic)
+std::string hummingbird_for_broker::create_topic(const std::string app_id, const std::string topic)
 {
-	std::string str;
+	std::string str = "ipc/req/subdevices/";
 
-	if (mode == 0)
-	{
-		str = "apps/";
-	}
-	else
-	{
-		str = "hummingbird/apps/";
-	}
-
-	str.append(app_id_);
+	str.append(app_id);
 	str.append("/");
 	str.append(topic);
 
@@ -147,7 +138,7 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 	int curr_minute = curr_tm.tm_min;
 	int curr_second = curr_tm.tm_sec;
 
-	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> Reconnect ---->\n",
+	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> broker Reconnect ---->\n",
 		curr_year, curr_month, curr_day,
 		curr_hour, curr_minute, curr_second);
 
@@ -176,13 +167,13 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
         sec = (rand() % 10) + 1;  // 1 ~ 10 sec
 		#endif
 
-        printf("[hwanjang] --> %d. reconnect after %d sec ...\n", (nretry_+1), sec);
+        printf("[hwanjang] broker --> %d. reconnect after %d sec ...\n", (nretry_+1), sec);
 
 		++nretry_;
     }   
     else
     {   
-		printf("[hwanjang] --> exit @@@@@@@@@@@@ \n");
+		printf("[hwanjang] broker --> exit @@@@@@@@@@@@ \n");
         exit(0); // program exit 
         // for test
         //sec = (rand() % 10) + 1;
@@ -194,8 +185,8 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 	try {
 		//cli_->connect(connOpts_, nullptr, *this);
 #if 1
-		cli_->connect(connOpts_, nullptr, *this);
-		cout << "Waiting for the reconnection..." << endl;       
+		g_async_client->connect(g_connOpts_, nullptr, *this);
+		cout << "broker ... Waiting for the reconnection..." << endl;       
 #else	
 		mqtt::token_ptr conntok = cli_->reconnect();
 		cout << "Waiting for the reconnection..." << endl;
@@ -206,16 +197,16 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 #endif
     }   
     catch (const mqtt::exception& exc) {
-        std::cerr << "Error: " << exc.what() << std::endl;
+        std::cerr << "broker ... Error: " << exc.what() << std::endl;
         exit(1);
     }
-    printf("\n[hwanjang] reconnect() --> end !!\n\n");
+    printf("\n[hwanjang] broker reconnect() --> end !!\n\n");
 }
 
 // Re-connection failure
 void hummingbird_for_broker::on_failure(const mqtt::token& tok)
 {
-	std::cout << "Connection failed : " << std::endl;
+	std::cout << "hummingbird_for_broker ... Connection failed : " << std::endl;
 
 #if 0 // for debug
 	printf("[hwanjang] MQTT Connection failed ################\n");
@@ -227,7 +218,7 @@ void hummingbird_for_broker::on_failure(const mqtt::token& tok)
 		printf("[hwanjang] %d-%d-%d , %d : %d : %d -> Connection failed !!\n", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 	}
 #else
-	printf("[hwanjang] MQTT Connection failed ################\n");
+	printf("[hwanjang] hummingbird_for_broker ... MQTT Connection failed ################\n");
 
 	struct tm curr_tm;
 	time_t curr_time = time(nullptr);
@@ -248,9 +239,9 @@ void hummingbird_for_broker::on_failure(const mqtt::token& tok)
 	if (tok.get_message_id() != 0)
 		std::cout << " for token: [" << tok.get_message_id() << "]" << std::endl;
 
-	conn_status = false;
+	g_conn_status = false;
 
-	printf("[hwanjang] connection_failed() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
+	printf("[hwanjang] hummingbird_for_broker::on_failure() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
 
 	if (lastConnectionTime == 0)
 	{
@@ -258,7 +249,7 @@ void hummingbird_for_broker::on_failure(const mqtt::token& tok)
 		//gettimeofday(&last, NULL);
 		//lastConnectionTime = last.tv_sec;
 		lastConnectionTime = curr_time;
-		printf("[hwanjang] on_failure() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
+		printf("[hwanjang] hummingbird_for_broker::on_failure() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
 	}
 
 	reconnect();
@@ -267,7 +258,7 @@ void hummingbird_for_broker::on_failure(const mqtt::token& tok)
 // Re-connection success
 void hummingbird_for_broker::on_success(const mqtt::token& tok)
 {
-	std::cout << "\nMQTT Connection success -> on_success()" << std::endl;
+	std::cout << "\nbroker ... MQTT Connection success -> hummingbird_for_broker::on_success()" << std::endl;
 
 	if (tok.get_message_id() != 0)
 		std::cout << " for token: [" << tok.get_message_id() << "]" << std::endl;
@@ -275,23 +266,24 @@ void hummingbird_for_broker::on_success(const mqtt::token& tok)
 	pub_topic_list.at(0)->init();
 	// presence msg should be generated -> hwanjang
 
-	std::string connection_topic;
 	std::string topic_name = pub_topic_list.at(0)->get_topic();
-	connection_topic = create_topic(0, "connection"); // 0: pub
+
+	std::string subTopic = "connection";
+	std::string connection_topic = create_topic(g_app_id_, subTopic); // 0: pub
 
 	std::string presence_str = get_camera_presence();
 
 #if 1 // 2019.12.11 - add -> null check
 	if (presence_str.empty())
 	{
-		printf("[hwanjang] connection message is empty !!\n");
+		printf("[hwanjang] broker ... connection message is empty !!\n");
 		return;
 	}
 #endif
 
 #if 1 // for debug
-	printf("[hwanjang] connection topic : %s\n", connection_topic.c_str());
-	printf("[hwanjang] connection message : \n%s\n", presence_str.c_str());
+	printf("[hwanjang] broker ... connection topic : %s\n", connection_topic.c_str());
+	printf("[hwanjang] broker ... connection message : \n%s\n", presence_str.c_str());
 #endif
 
 	pub_topic_list.at(0)->send_message(connection_topic.c_str(), presence_str.c_str(), 1, true); // retain : true
@@ -304,15 +296,16 @@ void hummingbird_for_broker::on_success(const mqtt::token& tok)
 	lastConnectionTime = 0;
 	nretry_ = 0;
 
-	conn_status = true;
-	std::cout << "\nMQTT Connection success -> on_success() -> End" << std::endl;
+	g_conn_status = true;
+	std::cout << "\nbroker ... MQTT Connection success -> hummingbird_for_broker::on_success() -> End" << std::endl;
 }
 
 // Callback for when the connection is lost.
 // This will initiate the attempt to manually reconnect.
 void hummingbird_for_broker::connection_lost(const std::string& cause)
 {
-	std::cout << "\nConnection lost" << std::endl;
+	std::cout << "hummingbird_for_broker::connection_lost" << std::endl;
+
 #if 0 // for debug
 	printf("[hwanjang] MQTT Connection lost ################\n");
 	struct timespec tspec;
@@ -323,7 +316,7 @@ void hummingbird_for_broker::connection_lost(const std::string& cause)
 		printf("[hwanjang] %d-%d-%d , %d : %d : %d -> Connection lost ...\n", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec);
 	}
 #else
-	printf("[hwanjang] MQTT Connection lost ################\n");
+	printf("[hwanjang] broker ... MQTT Connection lost ################\n");
 
 	struct tm curr_tm;
 	time_t curr_time = time(nullptr);
@@ -336,19 +329,19 @@ void hummingbird_for_broker::connection_lost(const std::string& cause)
 	int curr_hour = curr_tm.tm_hour;
 	int curr_minute = curr_tm.tm_min;
 	int curr_second = curr_tm.tm_sec;
-	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> Connection lost ...\n",
+	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> broker ... Connection lost ...\n",
 		curr_year, curr_month, curr_day,
 		curr_hour, curr_minute, curr_second);
 #endif
 
-	conn_status = false;
+	g_conn_status = false;
 
 	if (!cause.empty())
 		std::cout << "\tcause: " << cause << std::endl;
 
-	std::cout << "Reconnecting..." << std::endl;
+	std::cout << "broker ... Reconnecting..." << std::endl;
 
-	printf("[hwanjang] connection_lost() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
+	printf("[hwanjang] hummingbird_for_broker::connection_lost() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
 
 	if (lastConnectionTime == 0)
 	{
@@ -357,7 +350,7 @@ void hummingbird_for_broker::connection_lost(const std::string& cause)
 		//lastConnectionTime = last.tv_sec;
 		lastConnectionTime = curr_time;
 
-		printf("[hwanjang] connection_lost() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
+		printf("[hwanjang] hummingbird_for_broker::connection_lost() -> lastConnectionTime : %lld\n", (long long int)lastConnectionTime);
 	}
 
 	reconnect();
@@ -389,35 +382,42 @@ void hummingbird_for_broker::message_arrived(mqtt::const_message_ptr msg)
 	int curr_minute = curr_tm.tm_min;
 	int curr_second = curr_tm.tm_sec;
 
-	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> Message arrived ---->\n",
+	printf("[hwanjang] %d-%d-%d , %d : %d : %d -> broker ... Message arrived ---->\n",
 		curr_year, curr_month, curr_day,
 		curr_hour, curr_minute, curr_second);
 
-	printf("Topic : %s\n", msg->get_topic().c_str());
+	printf("broker ... Topic : %s\n", msg->get_topic().c_str());
 
-	std::cout << "MQTT Message arrived" << std::endl;
+	std::cout << "broker ... MQTT Message arrived" << std::endl;
 	std::cout << "\ttopic: " << msg->get_topic() << std::endl;
 	std::cout << "\tpayload: " << msg->to_string() << "\n" << std::endl;
 #endif
-	conn_status = true;
+	g_conn_status = true;
 
-	std::string topic;
-	int index;
+	std::string subTopic;
 
-	if (msg->get_topic().find("connection") != std::string::npos)
+	if (msg->get_topic().find("conection") != std::string::npos)
 	{
-
-		topic = create_topic(1, "users/+/connection"); // 1: sub
-		index = get_sub_topic_instance(topic);
-		std::cout << "topic index : " << index << std::endl;
-		sub_topic_list.at(index)->mqtt_response(msg);
+		subTopic = "conection";
 	}
 	else if (msg->get_topic().find("command") != std::string::npos)
 	{
-		topic = create_topic(1, "users/+/command"); // 1: sub
-		index = get_sub_topic_instance(topic);
-		std::cout << "topic index : " << index << std::endl;
-		sub_topic_list.at(index)->mqtt_response(msg);
+		subTopic = "command";
 	}
+	else if (msg->get_topic().find("message") != std::string::npos)
+	{
+		subTopic = "message";
+	}
+	else
+	{
+		printf("[hwanjang] hummingbird_main::message_arrived() -> unknown message ... %s\n", msg->get_topic().c_str());
+
+		return;
+	}
+
+	std::string topic = create_topic(g_app_id_, subTopic); // 1: sub
+	int index = get_sub_topic_instance(topic);
+	//std::cout << "topic index : " << index << std::endl;
+	sub_topic_list.at(index)->mqtt_response(msg);
 
 }

@@ -23,7 +23,11 @@ class MQTTManager_for_broker : public IMQTTManagerSink_for_broker {
         void RegisterObserverForMQTT(IMQTTManagerObserver_for_broker* callback) { observerForHbirdManager = callback; };
 
         time_t getLastConnection_Time();
-        void SendMessageToClient(std::string topic, std::string message, int type);
+
+        std::string create_pub_topic(std::string app_id, std::string topic_type);
+        std::string create_response_pub_topic(std::string topic);
+
+        void SendMessageToApp(std::string target_id, std::string topic_type, std::string message);
         void OnResponseCommandMessage(std::string topic, std::string message);
         void OnResponseCommandMessage(std::string topic, const void* payload, int size);
         
@@ -33,14 +37,14 @@ class MQTTManager_for_broker : public IMQTTManagerSink_for_broker {
 
         
 	private:
-
-		HummingbirdMqttInterface_for_broker* MQTTHandler_;
+        
+		HummingbirdMqttInterface_for_broker* g_MQTT_interface_Handler_for_broker;
 
         IMQTTManagerObserver_for_broker* observerForHbirdManager;
 
         std::string gMQTTServerAddress;
-        std::string gDeviceID;
-        std::string gDevicePW;
+        std::string g_app_id_;
+        std::string g_app_key_;
 
 };
 

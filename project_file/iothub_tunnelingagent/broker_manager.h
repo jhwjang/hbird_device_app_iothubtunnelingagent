@@ -22,7 +22,13 @@ public:
 	virtual void ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg);
 	//virtual void ReceiveMessageFromPeer(int type, const std::string& topic, const std::string& deviceid, const std::string& user, const std::string& message);
 
-	virtual void SendToPeer(const std::string& topic, const std::string& message, int type);
+	void process_command(const std::string& strTopic, mqtt::const_message_ptr mqttMsg);
+
+	void CommandRequestCloudServiceStatus(const std::string& strTopic, const std::string& strPayload);
+	// for test
+	void SendCloudServiceStatus(const std::string& target_app_id);
+
+	virtual void SendToPeer(const std::string& target_app, const std::string& topic, const std::string& message);
 	virtual void SendResponseToPeer(const std::string& topic, const std::string& message);
 	virtual void SendResponseToPeerForTunneling(const std::string& topic, const void* payload, int size);
 

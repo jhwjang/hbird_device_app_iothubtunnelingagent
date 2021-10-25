@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 #include "broker_manager.h"
 
@@ -9,8 +10,6 @@
 
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
-
-#define USER_ACCESS_TOKEN "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJodHd1LWI0MjAyMTUyLWJjZTYtNGI2MS1iNmYyLTBmOWE0YWQ1ZjcxMiIsImxvY2F0aW9uIjoidXMtd2VzdC0xIiwidXNlclN0YXR1cyI6InZlcmlmaWVkIiwidHNpIjoiMDk2MTc2ODAtN2I5Mi00MGExLTkxYWUtNTU2OTEwNDRmNTkzIiwic2NvcGUiOiJkZXZpY2UuaHR3ZDAwZDhjYjhhZjY1Mzc4Lm93bmVyIiwiaWF0IjoxNjIxMjQ1MTYyLCJleHAiOjE2MjEyNTIzNjEsImlzcyI6Imh0dzIuaGJpcmQtaW90LmNvbSIsImp0aSI6ImJkMzcyMjY1LWYxYzYtNDE4OS1iM2VmLTE4NmRlYTUxZTRhOSJ9.Z14Ot0SDGuSJVeiCFoEr-FrBk5JFHXyXnYFvnPYgwV3MxWBb8T9-KyKIYbtVMRJoEY9o4vyIQp7SGzcU7g18C0-B2Gmc3YmwDdDJWftXBtt7H-Pf6_bkNYGVUjfZBUd_hC-zneNEW_pexW3Gz6ZUJp3UnhjC0YMh591WM8alA7L5mwYIqMqrRbsRt3LFV4W5rCnKqUm7fRgoLkc9LBpTXfly3Q1JqYHGeCdNB_34h_y8oPVh-FZPBQyRxLTAt9uxwya_p9u-Tvs8FvLoDBZEDbz65p3wEKiyp7hp_gRHwoB8yBgIam6Qb9vwG4D42YVOVUGMp0pX-MkkiYcrorJdqQ"
 
 BrokerManager::BrokerManager() {
 	printf("[hwanjang] BrokerManager -> constructor !!!\n");
@@ -50,7 +49,7 @@ void BrokerManager::StartBrokerManager()
 	Start_MQTT();
 }
 
-bool BrokerManager::Init_MQTT(std::string agentID, std::string agentPW)
+bool BrokerManager::Init_MQTT(std::string agent_id, std::string agent_key)
 {
 
 	// 2018.02.25 hwanjan - CA file check
@@ -123,7 +122,7 @@ bool BrokerManager::Init_MQTT(std::string agentID, std::string agentPW)
     mMqtt_server_ = "tcp://localhost:1883";  // test for mosquitto broker
 
 	// Create MQTT Manager 
-	mMQTT_manager_for_broker_ = new MQTTManager_for_broker(mMqtt_server_, agentID, agentPW);
+	mMQTT_manager_for_broker_ = new MQTTManager_for_broker(mMqtt_server_, agent_id, agent_key);
 	mMQTT_manager_for_broker_->RegisterObserverForMQTT(this);
 	mMQTT_manager_for_broker_->init(strCAFilePath);
 
@@ -163,18 +162,120 @@ int BrokerManager::ThreadStartForMQTTMsg(mqtt::const_message_ptr mqttMsg)
 void BrokerManager::thread_function_for_MQTTMsg(mqtt::const_message_ptr mqttMsg)
 {
 	// ...
+	std::string topic = mqttMsg->get_topic();
+
+	if (topic.empty())
+	{
+		printf("Received message but topic is empty ... return !!!!\n");
+		return;
+	}
+
+	if (topic.find("command") != std::string::npos)
+	{
+		printf("Received command ...\n");
+		process_command(topic, mqttMsg);
+	}
+	else if (topic.find("message") != std::string::npos)
+	{
+		printf("Received message ...\n");		
+	}
+	else
+	{
+		printf("Received unknown topic ... %s \n", topic.c_str());
+	}
+}
+
+void BrokerManager::process_command(const std::string& strTopic, mqtt::const_message_ptr mqttMsg)
+{
+	std::string strPayload = mqttMsg->get_payload_str().c_str();
+
+
+	printf("BrokerManager::process_command() -> receive command : %s\n", strPayload.c_str());
+
+
+	if (strPayload.find("CloudServiceStatus") != std::string::npos)
+	{
+		CommandRequestCloudServiceStatus(strTopic, strPayload);
+
+#if 1 // for test
+		std::this_thread::sleep_for(std::chrono::seconds(10));
+
+		std::string strPayload = mqttMsg->get_payload_str().c_str();
+		std::string target_app = "serviceTray";
+
+		SendCloudServiceStatus(target_app);
+#endif
+	}
 
 }
 
-void BrokerManager::SendToPeer(const std::string& topic, const std::string& message, int type) {
+void BrokerManager::CommandRequestCloudServiceStatus(const std::string& strTopic, const std::string& strPayload)
+{
+	json_error_t error_check;
+	json_t* json_strRoot = json_loads(strPayload.c_str(), 0, &error_check);
+
+	if (!json_strRoot)
+	{
+		printf("BrokerManager::CommandRequestCloudServiceStatus() -> json_loads fail .. strPayload : \n%s\n", strPayload.c_str());
+
+		return;
+	}
+		
+	std::string strCommand, strType, strTid;
+
+	int ret;
+	char* charCommand, * charType, *charTid;
+	ret = json_unpack(json_strRoot, "{s:s, s:s, s:s}", "command", &charCommand, "type", &charType, "tid", &charTid);
+
+	if (ret)
+	{
+		printf("BrokerManager::CommandRequestCloudServiceStatus() -> json_unpack fail .. strPayload : \n%s\n", strPayload.c_str());
+		return;
+	}
+	else
+	{
+		strCommand = charCommand;
+		strType = charType;
+		strTid = charTid;
+	}
+
+	json_t* main_ResponseMsg, * sub_Msg;
+
+	main_ResponseMsg = json_object();
+	sub_Msg = json_object();
+
+	// main message
+#if 0
+	json_object_set(main_ResponseMsg, "command", json_string(strCommand.c_str()));
+	json_object_set(main_ResponseMsg, "type", json_string(strType.c_str()));
+	json_object_set(main_ResponseMsg, "tid", json_string(strTid.c_str()));
+#else
+	json_object_set(main_ResponseMsg, "command", json_string(charCommand));
+	json_object_set(main_ResponseMsg, "type", json_string(charType));
+	json_object_set(main_ResponseMsg, "tid", json_string(charTid));
+#endif
+
+	// sub message
+	json_object_set(sub_Msg, "status", json_integer(1));
+
+	json_object_set(main_ResponseMsg, "message", sub_Msg);
+
+	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
+
+	printf("[hwanjang] BrokerManager::CommandRequestCloudServiceStatus() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+
+	SendResponseToPeer(strTopic, strMQTTMsg);
+}
+
+void BrokerManager::SendToPeer(const std::string& target_app, const std::string& topic, const std::string& message) {
 	//printf("[hwanjang] HummingbirdManager::SendToPeer() -> message :\n%s\n", message.c_str());
 
-	mMQTT_manager_for_broker_->SendMessageToClient(topic, message, type);
+	mMQTT_manager_for_broker_->SendMessageToApp(target_app, topic, message);
 }
 
 void BrokerManager::SendResponseToPeer(const std::string& topic, const std::string& message)
 {
-#if 0 // debug
+#if 1 // debug
 	printf("** HummingbirdManager::SendResponseToPeer() -> Start !!\n");
 	printf("--> topic : %s\n", topic.c_str());
 #endif
@@ -188,4 +289,45 @@ void BrokerManager::SendResponseToPeerForTunneling(const std::string& topic, con
 	printf("--> topic : %s\n", topic.c_str());
 #endif
 	mMQTT_manager_for_broker_->OnResponseCommandMessage(topic, payload, size);
+}
+
+
+void BrokerManager::SendCloudServiceStatus(const std::string& target_app_id)
+{
+	json_t* mqtt_MainMsg = json_object();
+
+	// json key - command
+	json_object_set(mqtt_MainMsg, "command", json_string("CloudServiceStatus"));
+	// json key - type
+	json_object_set(mqtt_MainMsg, "type", json_string("check"));
+
+	// json key - tid
+	std::string strTid = "cmd_";
+
+	srand((unsigned int)time(NULL));
+	int tid = rand() % 10000;
+
+	std::stringstream ss;
+	ss << tid;
+	std::string result = ss.str();
+
+	strTid.append(result);
+
+	json_object_set(mqtt_MainMsg, "tid", json_string(strTid.c_str()));
+
+	json_t* sub_Msg = json_object();
+
+	// sub message
+	json_object_set(sub_Msg, "status", json_integer(1));
+
+	json_object_set(mqtt_MainMsg, "message", sub_Msg);
+
+	std::string strMQTTMsg = json_dumps(mqtt_MainMsg, 0);
+
+	printf("[hwanjang] BrokerManager::SendCloudServiceStatus() ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+
+	std::string topic_type = "message";	
+
+	SendToPeer(target_app_id, topic_type, strMQTTMsg);
+
 }

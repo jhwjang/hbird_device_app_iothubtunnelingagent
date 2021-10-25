@@ -148,13 +148,13 @@ public:
 	// Counter for the number of connection retries
 	int nretry_;
 	mqtt::token_ptr conntok_;
-	mqtt::async_client* cli_;
+	mqtt::async_client* g_async_client;
 	// Options to use if we need to reconnect
-	mqtt::connect_options& connOpts_;
+	mqtt::connect_options& g_connOpts_;
 	// An action listener to display the result of actions.
 	action_listener subListener_;
 
-	std::string create_topic(int mode, const std::string topic);
+	std::string create_topic(const std::string app_id, const std::string topic);
 
 	time_t lastConnectionTime;
 
@@ -192,17 +192,17 @@ public:
 	void add_topic(int type, hummingbird_topic_for_broker* topic);
 	hummingbird_topic_for_broker* get_pub_topic(const std::string topic);
 
-	std::string get_camera_presence(void) { return presence_str; };
-	void set_camera_presence(const std::string presence) { presence_str = presence; };
-	bool get_connection_status(void) { return conn_status; };
+	std::string get_camera_presence(void) { return g_presence_str; };
+	void set_camera_presence(const std::string presence) { g_presence_str = presence; };
+	bool get_connection_status(void) { return g_conn_status; };
 	time_t get_lastConnectionTime(void) { return lastConnectionTime; };
 
 private:
 	bool gHummingbirdStart;
-	bool conn_status;
+	bool g_conn_status;
 
-	std::string app_id_;
-	std::string presence_str;
+	std::string g_app_id_;
+	std::string g_presence_str;
 
 #endif
 };

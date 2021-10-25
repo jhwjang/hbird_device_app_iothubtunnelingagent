@@ -31,11 +31,11 @@ class hummingbird_topic_for_broker
         //std::string topic_;
 
     protected:
-        mqtt::async_client* cli_;
+        mqtt::async_client* g_async_client;
 
         hummingbird_topic_Observer_for_broker* callback_;
 
-        std::string create_hubid_topic(int mode, std::string app_id, std::string userName);
+        std::string create_topic(int mode, std::string app_id, std::string subTopic);
 	
     public:
     
@@ -53,29 +53,14 @@ class hummingbird_topic_for_broker
 };
 
 ///////////////////////////////////////////////////////////////////////
-// pub message for message
-class hummingbird_topic_pub_Message_for_broker: public hummingbird_topic_for_broker
-{
-    private:
-        int QOS;
-        std::string topic_;
-    public:
-        hummingbird_topic_pub_Message_for_broker(mqtt::async_client* cli,std::string app_id, std::string topic, std::string user_id);
-        std::string get_topic();
-        void set_topic(std::string topic);
-        int mqtt_response(mqtt::const_message_ptr msg);
-        int init();
-};
-
-///////////////////////////////////////////////////////////////////////
 // pub connection for device
 class hummingbird_topic_pub_Connect_for_broker : public hummingbird_topic_for_broker
 {
     private:
-        int QOS;
-        std::string topic_;
+        int g_QOS;
+        std::string g_Topic_;
     public:
-        hummingbird_topic_pub_Connect_for_broker(mqtt::async_client* cli, std::string app_id, std::string topic, std::string user_id);
+        hummingbird_topic_pub_Connect_for_broker(mqtt::async_client* cli, std::string app_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
@@ -86,12 +71,12 @@ class hummingbird_topic_pub_Connect_for_broker : public hummingbird_topic_for_br
 class hummingbird_topic_sub_Connect_for_broker : public hummingbird_topic_for_broker
 {
     private:
-        int QOS;
-        std::string topic_;
+        int g_QOS;
+        std::string g_Topic_;
         char curl_ret_msg[1024];
 
     public:
-        hummingbird_topic_sub_Connect_for_broker(mqtt::async_client* cli, std::string app_id, std::string user_id);
+        hummingbird_topic_sub_Connect_for_broker(mqtt::async_client* cli, std::string app_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
@@ -99,31 +84,105 @@ class hummingbird_topic_sub_Connect_for_broker : public hummingbird_topic_for_br
 };
 
 ///////////////////////////////////////////////////////////////////////
-// pub command for device
-class hummingbird_topic_pub_Command_for_broker : public hummingbird_topic_for_broker
+// pub for req message
+class hummingbird_topic_pub_ReqMessage_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+public:
+    hummingbird_topic_pub_ReqMessage_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+};
+
+// pub for res message
+class hummingbird_topic_pub_ResMessage_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+public:
+    hummingbird_topic_pub_ResMessage_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+};
+
+///////////////////////////////////////////////////////////////////////
+// sub for req message
+class hummingbird_topic_sub_ReqMessage_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+public:
+    hummingbird_topic_sub_ReqMessage_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+};
+
+// sub for res message
+class hummingbird_topic_sub_ResMessage_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+public:
+    hummingbird_topic_sub_ResMessage_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+};
+
+
+///////////////////////////////////////////////////////////////////////
+// pub for req command 
+class hummingbird_topic_pub_ReqCommand_for_broker : public hummingbird_topic_for_broker
 {
     private:
-        int QOS;
-        std::string topic_;
+        int g_QOS;
+        std::string g_Topic_;
     public:
-        hummingbird_topic_pub_Command_for_broker(mqtt::async_client* cli, std::string app_id, std::string topic, std::string user_id);
+        hummingbird_topic_pub_ReqCommand_for_broker(mqtt::async_client* cli, std::string app_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
         int init();
+};
+
+// pub for res command 
+class hummingbird_topic_pub_ResCommand_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+public:
+    hummingbird_topic_pub_ResCommand_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
 
 };
+
 //////////////////////////////////////////////////////////////////////
-// sub command for device
-class hummingbird_topic_sub_Command_for_broker : public hummingbird_topic_for_broker
+// sub fo req command 
+class hummingbird_topic_sub_ReqCommand_for_broker : public hummingbird_topic_for_broker
 {
     private:
-        int QOS;
-        std::string topic_;
+        int g_QOS;
+        std::string g_Topic_;
         char curl_ret_msg[1024];
 
     public:
-        hummingbird_topic_sub_Command_for_broker(mqtt::async_client* cli, std::string app_id, std::string user_id);
+        hummingbird_topic_sub_ReqCommand_for_broker(mqtt::async_client* cli, std::string app_id);
         std::string get_topic();
         void set_topic(std::string topic);
         int mqtt_response(mqtt::const_message_ptr msg);
@@ -131,4 +190,20 @@ class hummingbird_topic_sub_Command_for_broker : public hummingbird_topic_for_br
 
 };
 
+// sub fo res command 
+class hummingbird_topic_sub_ResCommand_for_broker : public hummingbird_topic_for_broker
+{
+private:
+    int g_QOS;
+    std::string g_Topic_;
+    char curl_ret_msg[1024];
+
+public:
+    hummingbird_topic_sub_ResCommand_for_broker(mqtt::async_client* cli, std::string app_id);
+    std::string get_topic();
+    void set_topic(std::string topic);
+    int mqtt_response(mqtt::const_message_ptr msg);
+    int init();
+
+};
 

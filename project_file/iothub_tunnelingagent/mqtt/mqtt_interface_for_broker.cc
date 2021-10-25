@@ -55,16 +55,15 @@ const int       WILLING_MSG_QOS = 1;
 IMQTTManagerSink_for_broker* HummingbirdMqttInterface_for_broker::g_MQTTManagerinstance = nullptr;
 
 HummingbirdMqttInterface_for_broker::HummingbirdMqttInterface_for_broker(
-	const std::string& server_address, const std::string& id, const std::string& pw)
+	const std::string& server_address, const std::string& app_id, const std::string& app_key)
   : //client(server_address, id),
-    client(server_address, "main_agent_broker"),
-   connopts(id, pw)
+    g_client(server_address, app_id),
+    g_connopts(app_id, app_key)
 {
-    app_id_ = id;
-    hub_id_ = id;  
-    hub_pw_ = pw;
+    g_app_id_ = app_id;
+    g_app_key_ = app_key;
 
-    printf("[hwanjang] HummingbirdMqttInterface_for_broker_for_broker Create -> hub id : %s, pw : %s\n", hub_id_.c_str(), hub_pw_.c_str());
+    printf("[hwanjang] HummingbirdMqttInterface_for_broker_for_broker Create -> g_app_id_ : %s, g_app_key_ : %s\n", g_app_id_.c_str(), g_app_key_.c_str());
  
     connection_status = false;
 }
@@ -75,41 +74,6 @@ printf("[hwanjang] HummingbirdMqttInterface_for_broker::~HummingbirdMqttInterfac
 
   if(_bird != NULL)
 	delete _bird;
-}
-
-
-bool HummingbirdMqttInterface_for_broker::find_appId(std::string topic, std::string* app_id)
-{
-    int index = topic.find("apps/");
-    std::string str = topic.substr(index + 5);
-    index = str.find("/");
-    std::string id = str.substr(0, index);
-
-    if (!(id.empty()))
-    {
-        //printf("str : %s\nappId : %s\n", str.c_str(), id.c_str());
-        *app_id = id;
-        return true;
-    }
-    else
-        return false;
-}
-
-bool HummingbirdMqttInterface_for_broker::find_deviceId(std::string topic, std::string* device_id)
-{
-    int index = topic.find("devices/");
-    std::string str = topic.substr(index + 8);
-    index = str.find("/");
-    std::string id = str.substr(0, index);
-
-    if (!(id.empty()))
-    {
-        //printf("str : %s\ndeviceId : %s\n", str.c_str(), id.c_str());
-        *device_id = id;
-        return true;
-    }
-    else
-        return false;
 }
 
 bool HummingbirdMqttInterface_for_broker::find_subdeviceId(std::string topic, std::string* subDevice_id)
@@ -129,23 +93,6 @@ bool HummingbirdMqttInterface_for_broker::find_subdeviceId(std::string topic, st
         return false;
 }
 
-bool HummingbirdMqttInterface_for_broker::find_userId(std::string topic, std::string* user_id)
-{
-    int index = topic.find("users/");
-    std::string str = topic.substr(index + 6);
-    index = str.find("/");
-    std::string id = str.substr(0, index);
-
-    if (!(id.empty()))
-    {
-        //printf("str : %s\nuserId : %s\n", str.c_str(), id.c_str());
-        *user_id = id;
-        return true;
-    }
-    else
-        return false;
-}
-
 bool HummingbirdMqttInterface_for_broker::find_command(std::string topic, std::string* strCommand)
 {
     int index = topic.rfind("/");
@@ -159,47 +106,16 @@ bool HummingbirdMqttInterface_for_broker::find_command(std::string topic, std::s
         return false;
 }
 
-int HummingbirdMqttInterface_for_broker::create_topic(const std::string& topic)
-{
-printf("[hwanjang] HummingbirdMqttInterface_for_broker::create_topic() -> topic : %s\n", topic.c_str());
-
-	int index, type=0;
-    std::string str;
-    std::string user, app_id;
-    if (!find_userId(topic, &user))
-        return 0;
-
-    if (!find_appId(topic, &app_id))
-        return 0;
-
-    if(topic.rfind("command") != std::string::npos)
-    {
-		index = topic.find("apps");
-        str = topic.substr(index);
-        if( _bird->get_pub_topic_instance(str) < 0)
-        {
-			hummingbird_topic_for_broker* _pub_topic = new hummingbird_topic_pub_Command_for_broker(&client, app_id, str, user);
-            _bird->add_topic(0, _pub_topic);
-            _pub_topic->RegisterObserver(this);
-        }
-
-	}
-
-//printf("[hwanjang] HummingbirdMqttInterface_for_broker::create_topic() -> topic : %s, -> return type : %d\n", topic.c_str(), type);
-
-	return 0;
-}
-
 void HummingbirdMqttInterface_for_broker::MQTT_Init(const std::string& path)
 {
 	printf("*** HummingbirdMqttInterface_for_broker::MQTT_Init() --->\n");
 
-    connopts.set_connect_timeout(5);
+    g_connopts.set_connect_timeout(5);
 
-    connopts.set_keep_alive_interval(90); // keep alive 30 -> 90
+    g_connopts.set_keep_alive_interval(90); // keep alive 30 -> 90
     //connopts.set_keep_alive_interval(30);
 
-    connopts.set_clean_session(true);
+    g_connopts.set_clean_session(true);
 
     mqtt::ssl_options sslopts;
 
@@ -230,37 +146,101 @@ void HummingbirdMqttInterface_for_broker::MQTT_Init(const std::string& path)
 	mqtt::message willmsg(willing_topic, LWT_PAYLOAD, WILLING_MSG_QOS, true);
 ///////////////////////////////////////////////////////////////////////////////////
     mqtt::will_options will(willmsg);
-    connopts.set_will(will);
-    connopts.set_ssl(sslopts);
+    g_connopts.set_will(will);
+    g_connopts.set_ssl(sslopts);
 
 #if 1 // debug
-printf("hub id : %s\n", connopts.get_user_name().c_str());
-printf("hub pw : %s\n", connopts.get_password().c_str());
+printf("hub id : %s\n", g_connopts.get_user_name().c_str());
+printf("hub pw : %s\n", g_connopts.get_password().c_str());
 printf("willing_topic : %s\n", willing_topic.c_str());
 printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
 #endif
 
-	_bird = new hummingbird_for_broker(&client, connopts, app_id_);
+	_bird = new hummingbird_for_broker(&g_client, g_connopts, g_app_id_);
 
+    // target app id : serviceTray    
+    std::string target_app_id = "serviceTray";
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// pub list
-    hummingbird_topic_for_broker* pub_topic_message = new hummingbird_topic_pub_Message_for_broker(&client, app_id_, "+","+");
-    _bird->add_topic(0, pub_topic_message);
-    pub_topic_message->RegisterObserver(this);
-
-	hummingbird_topic_for_broker* pub_topic_connect = new hummingbird_topic_pub_Connect_for_broker(&client, app_id_, "+","+");
+#if 0 
+    // connection
+	hummingbird_topic_for_broker* pub_topic_connect = new hummingbird_topic_pub_Connect_for_broker(&g_client, g_app_id_);
 	_bird->add_topic(0, pub_topic_connect);
 	pub_topic_connect->RegisterObserver(this);
 
+    // req - message
+    hummingbird_topic_for_broker* pub_req_message = new hummingbird_topic_pub_ReqMessage_for_broker(&g_client, target_app_id);
+    _bird->add_topic(0, pub_req_message);
+    pub_req_message->RegisterObserver(this);
+
+    // res - message
+    hummingbird_topic_for_broker* pub_res_message = new hummingbird_topic_pub_ResMessage_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(0, pub_res_message);
+    pub_res_message->RegisterObserver(this);
+
+    // req - command
+    hummingbird_topic_for_broker* pub_req_command = new hummingbird_topic_pub_ReqCommand_for_broker(&g_client, target_app_id);
+    _bird->add_topic(0, pub_req_command);
+    pub_req_command->RegisterObserver(this);
+
+    // res - command
+    hummingbird_topic_for_broker* pub_res_command = new hummingbird_topic_pub_ResCommand_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(0, pub_res_command);
+    pub_res_command->RegisterObserver(this);
+#else
+    // connection
+    hummingbird_topic_for_broker* pub_topic_connect = new hummingbird_topic_pub_Connect_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(0, pub_topic_connect);
+    pub_topic_connect->RegisterObserver(this);
+
+    // res - message
+    hummingbird_topic_for_broker* pub_res_message = new hummingbird_topic_pub_ResMessage_for_broker(&g_client, target_app_id);
+    _bird->add_topic(0, pub_res_message);
+    pub_res_message->RegisterObserver(this);
+
+    // res - command
+    hummingbird_topic_for_broker* pub_res_command = new hummingbird_topic_pub_ResCommand_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(0, pub_res_command);
+    pub_res_command->RegisterObserver(this);
+#endif
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// sublist
+#if 0
+#if 0
 	// Connection
-	hummingbird_topic_for_broker* sub_connect = new hummingbird_topic_sub_Connect_for_broker(&client, app_id_,  "+");
+	hummingbird_topic_for_broker* sub_connect = new hummingbird_topic_sub_Connect_for_broker(&g_client, g_app_id_);
 	_bird->add_topic(1, sub_connect);
 	sub_connect->RegisterObserver(this);
+#endif
 
-	// Command
-    hummingbird_topic_for_broker* sub_command = new hummingbird_topic_sub_Command_for_broker(&client, app_id_, "+");
-    _bird->add_topic(1, sub_command);
-    sub_command->RegisterObserver(this);
+    // sub for req message
+    hummingbird_topic_for_broker* sub_req_message = new hummingbird_topic_sub_ReqMessage_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(1, sub_req_message);
+    sub_req_message->RegisterObserver(this);
+
+    // sub for res message
+    hummingbird_topic_for_broker* sub_res_message = new hummingbird_topic_sub_ResMessage_for_broker(&g_client, target_app_id);
+    _bird->add_topic(1, sub_res_message);
+    sub_res_message->RegisterObserver(this);
+
+	// sub for req Command
+    hummingbird_topic_for_broker* sub_req_command = new hummingbird_topic_sub_ReqCommand_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(1, sub_req_command);
+    sub_req_command->RegisterObserver(this);
+
+    // sub for res Command
+    hummingbird_topic_for_broker* sub_res_command = new hummingbird_topic_sub_ResCommand_for_broker(&g_client, target_app_id);
+    _bird->add_topic(1, sub_res_command);
+    sub_res_command->RegisterObserver(this);
+
+#else
+    // sub for req Command
+    hummingbird_topic_for_broker* sub_req_command = new hummingbird_topic_sub_ReqCommand_for_broker(&g_client, g_app_id_);
+    _bird->add_topic(1, sub_req_command);
+    sub_req_command->RegisterObserver(this);
+#endif
 
     SetDeviceStatus("HummingbirdMqttInterface_for_broker::MQTT_Init() ... Agent Start ... Device ON");
 }
@@ -305,7 +285,7 @@ time_t HummingbirdMqttInterface_for_broker::MQTT_lastConnection_Time()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 // hwanjang - Send to MQTT
-bool HummingbirdMqttInterface_for_broker::SendToMQTT(const std::string& topic, const std::string& message, int type)
+bool HummingbirdMqttInterface_for_broker::SendMQTTMessageToPeer(const std::string& topic, const std::string& message)
 {
 #ifdef MQTT_DEBUG  // for debug
     struct tm tmStart;
@@ -327,30 +307,16 @@ bool HummingbirdMqttInterface_for_broker::SendToMQTT(const std::string& topic, c
 		return false;
 	}
 
-    std::string sendToTopic, pubTopic;
-    pubTopic = "apps/";
-    pubTopic.append(app_id_);
-    pubTopic.append("/message");
+    std::string pubTopic = topic;
 
-#if 0
-    sendToTopic = "devices/";
-    sendToTopic.append(hub_id_);  // Global variable
-    sendToTopic.append("/subdevices/");
-    sendToTopic.append(sendTo);
-#else
-    int index = topic.find("hummingbird/");
-    sendToTopic = topic.substr(index + 12);
-#endif
-
-#if 0		
-    printf("--> sendToTopic : %s\n", sendToTopic.c_str());
+#if 1   
     printf("--> pubTopic : %s\n", pubTopic.c_str());
 #endif
 
     hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(pubTopic);
     if(_pub_topic != NULL)
     {
-        _pub_topic->send_message(sendToTopic.c_str(), message.c_str(), 1, false);
+        _pub_topic->send_message(pubTopic.c_str(), message.c_str(), 1, false);
     }
     else
     {
@@ -460,34 +426,21 @@ void HummingbirdMqttInterface_for_broker::OnResponseCommandMessage(const std::st
     	printf("HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> The connection was lost ... -> return !!!\n");
         return;
     }
-    std::string sendToTopic, pubTopic;
-    pubTopic = "apps/";
-    pubTopic.append(app_id_);
-    pubTopic.append("/message");
 
-#if 0
-    sendToTopic = "devices/";
-    sendToTopic.append(hub_id_);  // Global variable
-    sendToTopic.append("/subdevices/");
-    sendToTopic.append(sendTo);
-#else
-    int index = topic.find("hummingbird/");
-    sendToTopic = topic.substr(index + 12);
-#endif
+    std::string responseTopic = topic;
 
 #if 1		
-    printf("--> sendToTopic : %s\n", sendToTopic.c_str());
-    printf("--> pubTopic : %s\n", pubTopic.c_str());
+    printf("--> responseTopic : %s\n", responseTopic.c_str());
 #endif
 
-    hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(pubTopic);
+    hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(responseTopic);
     if(_pub_topic != NULL)
     {
-        _pub_topic->send_message(sendToTopic.c_str(), message.c_str(), 1, false);
+        _pub_topic->send_message(responseTopic.c_str(), message.c_str(), 1, false);
     }
     else
     {
-        printf("[hwanjang] HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> pub topic %s not found !!!!\n", pubTopic.c_str());
+        printf("[hwanjang] HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> pub topic %s not found !!!!\n", responseTopic.c_str());
     }
 }
 
@@ -505,34 +458,21 @@ void HummingbirdMqttInterface_for_broker::OnResponseCommandMessage(const std::st
         printf("HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> The connection was lost ... -> return !!!\n");
         return;
     }
-    std::string sendToTopic, pubTopic;
-    pubTopic = "apps/";
-    pubTopic.append(app_id_);
-    pubTopic.append("/message");
-
-#if 0
-    sendToTopic = "devices/";
-    sendToTopic.append(hub_id_);  // Global variable
-    sendToTopic.append("/subdevices/");
-    sendToTopic.append(sendTo);
-#else
-    int index = topic.find("hummingbird/");
-    sendToTopic = topic.substr(index + 12);
-#endif
+ 
+    std::string responseTopic = topic;
 
 #if 1		
-    printf("--> sendToTopic : %s\n", sendToTopic.c_str());
-    printf("--> pubTopic : %s\n", pubTopic.c_str());
+    printf("--> responseTopic : %s\n", responseTopic.c_str());
 #endif
 
-    hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(pubTopic);
+    hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(responseTopic);
     if (_pub_topic != NULL)
     {
-        _pub_topic->send_message(sendToTopic.c_str(), payload, size, 1, false);
+        _pub_topic->send_message(responseTopic.c_str(), payload, size, 1, false);
     }
     else
     {
-        printf("[hwanjang] HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> pub topic %s not found !!!!\n", pubTopic.c_str());
+        printf("[hwanjang] HummingbirdMqttInterface_for_broker::OnResponseCommandMessage() -> pub topic %s not found !!!!\n", responseTopic.c_str());
     }
 }
 
@@ -565,38 +505,4 @@ void HummingbirdMqttInterface_for_broker::SetDeviceStatus(const std::string& mes
 {
    //printf("HummingbirdMqttInterface_for_broker::SetDeviceStatus() -> message : \n%s\n", message.c_str());
    _bird->set_camera_presence(message);
-}
-
-void HummingbirdMqttInterface_for_broker::SendConnectionMessage(const std::string& message)
-{
-        std::string topic;
-        topic = "apps/";
-        topic.append(app_id_);  // Global variable
-        topic.append("/connection");
-
-#if 0  // for debug
-        printf("** HummingbirdMqttInterface_for_broker::SendConnectionMessage() -> Start !!\n");
-        printf("--> topic : %s\n", topic.c_str());
-        printf("--> message :\n%s\n", message.c_str());
-#endif
-
-        // 2018.02.06 hwanjang - hummingbird connection status check
-        if(!_bird->get_connection_status())
-        {
-                printf("HummingbirdMqttInterface_for_broker::SendConnectionMessage() -> The connection was lost ... -> return !!!\n");
-                return;
-        }
-
-        hummingbird_topic_for_broker* _pub_topic = _bird->get_pub_topic(topic);
-
-        if(_pub_topic != NULL)
-        {
-			_pub_topic->send_message(topic.c_str(), message.c_str(), 1, true);  // true : retain
-        }
-        else
-        {
-			printf("pub topic %s not found !!!!\n", topic.c_str());
-        }
-
-printf("** HummingbirdMqttInterface_for_broker::SendConnectionMessage() -> End !!\n");		
 }
