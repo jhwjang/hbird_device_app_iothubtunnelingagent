@@ -19,9 +19,9 @@ using std::this_thread::sleep_for;
 #define TEST_DEVICE_ADDRESS "192.168.11.5"  // for my device
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-//#define CURL_TIMEOUT 5 
-#define CURL_TIMEOUT 10 
-#define CURL_CONNECTION_TIMEOUT 5  
+//#define CURL_TIMEOUT 10 
+#define CURL_TIMEOUT 5
+#define CURL_CONNECTION_TIMEOUT 3  
 
 #if 0
 // QA
