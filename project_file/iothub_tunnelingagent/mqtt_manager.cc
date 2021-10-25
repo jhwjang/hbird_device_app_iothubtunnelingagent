@@ -11,40 +11,40 @@ MQTTManager::MQTTManager(std::string address,
 	printf("Create MQTTManager , ID : %s , PW : %s\n ", gDeviceID.c_str(), gDevicePW.c_str());
 	printf("gMQTTServerAddress : %s\n", gMQTTServerAddress.c_str());
 
-	MQTTHandler_ = nullptr;
+	g_MQTT_interface_Handler = nullptr;
 	observerForHbirdManager = nullptr;
 }
 
 MQTTManager::~MQTTManager()
 {
-	if(MQTTHandler_)
-		delete MQTTHandler_;
+	if(g_MQTT_interface_Handler)
+		delete g_MQTT_interface_Handler;
 }
 
 void MQTTManager::init(const std::string& path)
 {
-	MQTTHandler_ = new HummingbirdMqttInterface(gMQTTServerAddress, gDeviceID, gDevicePW); 
-	if (MQTTHandler_ != nullptr)
+	g_MQTT_interface_Handler = new HummingbirdMqttInterface(gMQTTServerAddress, gDeviceID, gDevicePW);
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		MQTTHandler_->RegisterMQTTManagerInterface(this);
-		MQTTHandler_->MQTT_Init(path); // 2018.10.29 hwanjang - add version
+		g_MQTT_interface_Handler->RegisterMQTTManagerInterface(this);
+		g_MQTT_interface_Handler->MQTT_Init(path); // 2018.10.29 hwanjang - add version
 	}
 }
 
 void MQTTManager::start()
 {
 	// MQTT Start
-	if (MQTTHandler_ != nullptr)
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		MQTTHandler_->MQTT_Start();
+		g_MQTT_interface_Handler->MQTT_Start();
 	}
 }
 
 time_t MQTTManager::getLastConnection_Time()
 {
-	if (MQTTHandler_ != nullptr)
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		return MQTTHandler_->MQTT_lastConnection_Time();
+		return g_MQTT_interface_Handler->MQTT_lastConnection_Time();
 	}
 
 	return 0;
@@ -52,9 +52,9 @@ time_t MQTTManager::getLastConnection_Time()
 
 void MQTTManager::SendMessageToClient(std::string topic, std::string message, int type)
 {
-	if (MQTTHandler_ != nullptr)
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		MQTTHandler_->SendToMQTT(topic, message, type);
+		g_MQTT_interface_Handler->SendToMQTT(topic, message, type);
 	}
 }
 
@@ -62,9 +62,9 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, std::string messag
 {
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
 	printf("MQTTManager::OnResponseCommandMessage() : message : %s\n", message.c_str());
-	if (MQTTHandler_ != nullptr)
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		MQTTHandler_->OnResponseCommandMessage(topic, message);
+		g_MQTT_interface_Handler->OnResponseCommandMessage(topic, message);
 	}
 }
 
@@ -72,9 +72,9 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payloa
 {
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
 
-	if (MQTTHandler_ != nullptr)
+	if (g_MQTT_interface_Handler != nullptr)
 	{
-		MQTTHandler_->OnResponseCommandMessage(topic, payload, size);
+		g_MQTT_interface_Handler->OnResponseCommandMessage(topic, payload, size);
 	}
 }
 

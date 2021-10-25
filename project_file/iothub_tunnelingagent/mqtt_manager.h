@@ -34,7 +34,7 @@ class MQTTManager : public IMQTTManagerSink {
         
 	private:
 
-		HummingbirdMqttInterface* MQTTHandler_;
+		HummingbirdMqttInterface* g_MQTT_interface_Handler;
 
 		IMQTTManagerObserver* observerForHbirdManager;
 
