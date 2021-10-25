@@ -204,14 +204,11 @@ int main(int argc, char* argv[])
 		strDeviceKey = "file";
 	}
 
+	std::cout << "Receive Cloud Agent Start ... mode : " << agent_mode << std::endl;
 
-#if 0 // ori
-	if ((agent_mode < 0) && (agent_mode > 2))
-		agent_mode = 2;  // broker mode
-#else // for test
 	if ((agent_mode < 0) && (agent_mode > 2))
 		agent_mode = 0;  // test -> bridge & broker mode
-#endif
+
 	std::cout << "Cloud Agent Start ... mode : " << agent_mode << std::endl;
 
 	MainManager* mainManager = new MainManager();
