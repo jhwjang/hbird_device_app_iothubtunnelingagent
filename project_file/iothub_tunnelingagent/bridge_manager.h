@@ -62,7 +62,7 @@ private:
 	///////////////////////////////////////////////////////////////
 
 	std::string mMqtt_server_;
-	int gMax_Channel;
+	//int gMax_Channel;
 
 };
 

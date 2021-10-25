@@ -23,7 +23,7 @@ BridgeManager::BridgeManager() {
 	mAPI_manager_ = nullptr;
 //	mConfig_manager_ = nullptr;
 
-	gMax_Channel = 0;
+	//gMax_Channel = 0;
 
 }
 
@@ -59,12 +59,34 @@ void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strD
 {
 	bool result = false;
 
+	std::string device_id = strDeviceID;
+	std::string	device_key = strDeviceKey;
+
 	//mAPI_manager_ = new APIManager();
 	mAPI_manager_ = std::make_unique<APIManager>();
 	mAPI_manager_->RegisterObserverForHbirdManager(this);
 
-	std::string device_id = strDeviceID;
-	std::string	device_key = strDeviceKey;
+#if 1  // for dashboard
+	// using std::unique_ptr
+	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id, nWebPort);
+	mSUNAPI_manager_->RegisterObserverForHbirdManager(this);
+
+	//gMax_Channel = mSUNAPI_manager_->GetMaxChannel();
+	//printf("BridgeManager::StartBridgeManager() -> gMax_Channel : %d\n", gMax_Channel);
+
+	result =  mSUNAPI_manager_->SunapiManagerInit();
+
+	if (!result)
+	{
+		printf("BridgeManager::StartBridgeManager() -> failed to SunapiManagerInit ...  \n");
+	}
+
+	// Test
+	//mSUNAPI_manager_->TestDashboardView();
+	//mSUNAPI_manager_->TestDeviceInfoView();
+	//mSUNAPI_manager_->TestFirmwareVersionInfoView();
+#endif
+
 
 #if 0 // for test
 
@@ -131,14 +153,13 @@ void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strD
 	// MQTT connect
 	Start_MQTT();
 
-#if 1  // for dashboard
+#if 0  // for dashboard
 	// using std::unique_ptr
 	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id, nWebPort);
 	mSUNAPI_manager_->RegisterObserverForHbirdManager(this);
 
-	gMax_Channel = mSUNAPI_manager_->GetMaxChannel();
-
-	printf("BridgeManager::StartBridgeManager() -> gMax_Channel : %d\n", gMax_Channel);
+	//gMax_Channel = mSUNAPI_manager_->GetMaxChannel();
+	//printf("BridgeManager::StartBridgeManager() -> gMax_Channel : %d\n", gMax_Channel);
 
 	mSUNAPI_manager_->SunapiManagerInit();
 
