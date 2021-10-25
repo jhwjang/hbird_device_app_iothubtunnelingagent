@@ -9,6 +9,7 @@
 #include <chrono>
 #include <vector>
 
+#define HWANJANG_DEBUG
 
 #define HBIRD_DEVICE_TYPE "gateway"
 
@@ -62,12 +63,12 @@ sunapi_manager::sunapi_manager(const std::string& strDeviceID, int nWebPort)
 	g_Sub_network_info_Cnt = 0;
 	g_Sub_device_info_Cnt = 0;
 
-	g_UpdateTimeOfRegistered = time(NULL);
-	g_UpdateTimeOfStoragePresence = time(NULL);
-	g_UpdateTimeOfStorageStatus = time(NULL);
-	g_UpdateTimeOfDeviceInfo = time(NULL);
-	g_UpdateTimeOfNetworkInterface = time(NULL);
-	g_UpdateTimeForFirmwareVersionOfSubdevices = time(NULL);
+	g_UpdateTimeOfRegistered = 0;
+	g_UpdateTimeOfStoragePresence = 0;
+	g_UpdateTimeOfStorageStatus = 0;
+	g_UpdateTimeOfDeviceInfo = 0;
+	g_UpdateTimeOfNetworkInterface = 0;
+	g_UpdateTimeForFirmwareVersionOfSubdevices = 0;
 
 	observerForHbirdManager = nullptr;
 }
@@ -102,7 +103,7 @@ void sunapi_manager::RegisterObserverForHbirdManager(ISUNAPIManagerObserver* cal
 	observerForHbirdManager = callback;
 }
 
-void sunapi_manager::SunapiManagerInit()
+bool sunapi_manager::SunapiManagerInit()
 {
 	// TODO: 여기에 구현 코드 추가.
 
@@ -127,6 +128,7 @@ void sunapi_manager::SunapiManagerInit()
 
 	printf("sunapi_manager_init() -> g_StrDeviceIP : %s , g_StrDevicePW : %s\n", g_StrDeviceIP.c_str(), g_StrDevicePW.c_str());
 
+#if 0
 	/// <summary>
 	//  Get Max Channel
 	/// </summary>
@@ -136,12 +138,12 @@ void sunapi_manager::SunapiManagerInit()
 
 	if (maxCh > 0)
 	{
-		g_Max_Channel = maxCh + 1;  // index = 0 ~ maxCh
+		g_Max_Channel = maxCh;  // index = 0 ~ maxCh
 	}
 	else
 	{
 		// ???? 
-		g_Max_Channel = DEFAULT_MAX_CHANNEL + 1;
+		g_Max_Channel = DEFAULT_MAX_CHANNEL;
 	}
 
 	printf("sunapi_manager_init() -> Max Channel : %d\n", g_Max_Channel);
@@ -167,22 +169,34 @@ void sunapi_manager::SunapiManagerInit()
 		g_Gateway_info_->DeviceModel = "CloudGateway";
 		g_Gateway_info_->FirmwareVersion = "unknown";
 	}
+#else
+
+	// gateway init
+	g_Gateway_info_ = new GatewayInfo;
+
+	ResetGatewayInfo();
+
+	result = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
+
+#endif
+
+	int maxChannel = g_Gateway_info_->maxChannel;
 
 	// 1. dashboard init
-	g_Storage_info_ = new Storage_Infos[g_Max_Channel];
-	g_Worker_Storage_info_ = new Storage_Infos[g_Max_Channel];
+	g_Storage_info_ = new Storage_Infos[maxChannel];
+	g_Worker_Storage_info_ = new Storage_Infos[maxChannel];
 
 	ResetStorageInfos();
 
 	// 2. deviceinfo init
-	g_SubDevice_info_ = new Channel_Infos[g_Max_Channel];
-	g_Worker_SubDevice_info_ = new Channel_Infos[g_Max_Channel];
+	g_SubDevice_info_ = new Channel_Infos[maxChannel];
+	g_Worker_SubDevice_info_ = new Channel_Infos[maxChannel];
 
 	ResetSubdeviceInfos();
 	
 	// 3. firmware version
-	g_Firmware_Ver_info_ = new Firmware_Version_Infos[g_Max_Channel];
-	g_Worker_Firmware_Ver_info_ = new Firmware_Version_Infos[g_Max_Channel];
+	g_Firmware_Ver_info_ = new Firmware_Version_Infos[maxChannel];
+	g_Worker_Firmware_Ver_info_ = new Firmware_Version_Infos[maxChannel];
 
 	ResetFirmwareVersionInfos();
 
@@ -239,10 +253,76 @@ void sunapi_manager::SunapiManagerInit()
 	UpdateSubdeviceInfos();
 #endif
 	//ThreadStartForUpdateInfos(60*60);  // after 1 hour
+
+	printf("[hwanjang] sunapi_manager::SunapiManagerInit() ... End ... return %d\n", result);
+
+	return result;
 }
 
-bool sunapi_manager::GetNetworkInterfaceOfGateway()
+bool sunapi_manager::GetGatewayInfo(const std::string& strGatewayIP, const std::string& strID_PW)
 {
+	/// <summary>
+	//  Get Max Channel
+	/// </summary>
+	std::string _gatewayIP = strGatewayIP;
+	std::string _idPassword = strID_PW;
+
+	int maxCh = 0;
+	maxCh = GetMaxChannelByAttribute(_gatewayIP, _idPassword);
+
+	if (maxCh < 1)
+	{
+		// ???? 
+#ifdef HWANJANG_DEBUG
+		printf("sunapi_manager::GetGatewayInfo() -> failed to GetMaxChannelByAttribute ...\n");
+#endif
+		//g_Max_Channel = DEFAULT_MAX_CHANNEL;
+		g_Gateway_info_->maxChannel = DEFAULT_MAX_CHANNEL;
+	}
+
+	printf("sunapi_manager::GetGatewayInfo() -> Max Channel : %d\n", g_Gateway_info_->maxChannel);
+
+	bool result_interface = GetNetworkInterfaceOfGateway(_gatewayIP, _idPassword);
+
+	// error ??
+	if (!result_interface)
+	{
+		g_Gateway_info_->IPv4Address = g_StrDeviceIP;
+		g_Gateway_info_->MACAddress = "unknown";
+
+#ifdef HWANJANG_DEBUG
+		printf("sunapi_manager::GetGatewayInfo() -> failed to GetNetworkInterfaceOfGateway ...\n");
+#endif
+	}
+
+	bool result_deviceInfo = GetDeviceInfoOfGateway(_gatewayIP, _idPassword);
+
+	if (!result_deviceInfo)
+	{
+		g_Gateway_info_->DeviceModel = "CloudGateway";
+		g_Gateway_info_->FirmwareVersion = "unknown";
+
+#ifdef HWANJANG_DEBUG
+		printf("sunapi_manager::GetGatewayInfo() -> failed to GetDeviceInfoOfGateway ...\n");
+#endif
+	}
+
+	// issue ... failure due to timeout  ????
+	if ((maxCh > 0) && result_interface && result_deviceInfo)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayIP, const std::string& strID_PW)
+{
+	std::string _gatewayIP = strGatewayIP;
+	std::string _idPassword = strID_PW;
+
 	std::string request;
 
 	CURLcode resCode;
@@ -322,7 +402,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 	request.clear();
 
 	request = "http://";
-	request.append(g_StrDeviceIP);
+	request.append(_gatewayIP);
 	request.append("/stw-cgi/network.cgi?msubmenu=interface&action=view");
 
 #if 1  // 2019.09.05 hwanjang - sunapi debugging
@@ -331,7 +411,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 
 	strSUNAPIResult.clear();
 
-	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, g_StrDevicePW, &strSUNAPIResult);
+	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
 
 	g_Gateway_info_->curl_responseCode = resCode;
 
@@ -527,13 +607,10 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway()
 // Reset
 void sunapi_manager::ResetGatewayInfo()
 {
-	g_Gateway_info_->curl_responseCode = 0;
-	//g_Gateway_info_->WebPort = 0;
-	g_Gateway_info_->DeviceModel.clear();
-	g_Gateway_info_->IPv4Address.clear();
-	g_Gateway_info_->MACAddress.clear();
-	g_Gateway_info_->FirmwareVersion.clear();
-	g_Gateway_info_->ConnectionStatus.clear();	
+	g_Gateway_info_->maxChannel = 0;
+	g_Gateway_info_->WebPort = 0;
+	ResetNetworkInterfaceOfGateway();
+	ResetDeviceInfoOfGateway();
 }
 
 void sunapi_manager::ResetNetworkInterfaceOfGateway()
@@ -554,7 +631,7 @@ void sunapi_manager::ResetDeviceInfoOfGateway()
 
 void sunapi_manager::ResetStorageInfos()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		// storage info
 		g_Storage_info_[i].update_check = true;  // In case of check, set to true. 
@@ -611,7 +688,7 @@ void sunapi_manager::ResetStorageInfoForChannel(int channel)
 
 void sunapi_manager::ResetSubdeviceInfos()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		// subdevice info
 		g_SubDevice_info_[i].update_check_deviceinfo = true;  // In case of check, set to true.
@@ -687,7 +764,7 @@ void sunapi_manager::ResetSubdeviceInfoForChannel(int channel)
 
 void sunapi_manager::ResetFirmwareVersionInfos()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		// subdevice info
 		g_Firmware_Ver_info_[i].fw_update_check = true;  // In case of check, set to true.
@@ -704,7 +781,6 @@ void sunapi_manager::ResetFirmwareVersionInfos()
 		g_Worker_Firmware_Ver_info_[i].UpgradeStatus.clear();  // add UpgradeStatus
 	}
 }
-
 
 void sunapi_manager::ResetFirmwareVersionInfoForChannel(int channel)
 {
@@ -729,9 +805,9 @@ void sunapi_manager::ResetFirmwareVersionInfoForChannel(int channel)
 // Update
 void sunapi_manager::UpdateStorageInfos()
 {
-	//memcpy(g_Storage_info_, g_Worker_Storage_info_, sizeof(Storage_Infos) * (g_Max_Channel));
+	//memcpy(g_Storage_info_, g_Worker_Storage_info_, sizeof(Storage_Infos) * (g_Gateway_info_->maxChannel));
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Storage_info_[i].CheckConnectionStatus = g_Worker_Storage_info_[i].CheckConnectionStatus;
 		g_Storage_info_[i].ConnectionStatus = g_Worker_Storage_info_[i].ConnectionStatus;
@@ -752,9 +828,9 @@ void sunapi_manager::UpdateStorageInfos()
 
 void sunapi_manager::UpdateSubdeviceInfos()
 {
-	//memcpy(g_SubDevice_info_, g_Worker_SubDevice_info_, sizeof(Channel_Infos) * (g_Max_Channel));
+	//memcpy(g_SubDevice_info_, g_Worker_SubDevice_info_, sizeof(Channel_Infos) * (g_Gateway_info_->maxChannel));
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_SubDevice_info_[i].CheckConnectionStatus = g_Worker_SubDevice_info_[i].CheckConnectionStatus;
 		g_SubDevice_info_[i].ConnectionStatus = g_Worker_SubDevice_info_[i].ConnectionStatus;
@@ -776,9 +852,9 @@ void sunapi_manager::UpdateSubdeviceInfos()
 
 void sunapi_manager::UpdateSubdeviceNetworkInterfaceInfos()
 {
-	//memcpy(g_SubDevice_info_, g_Worker_SubDevice_info_, sizeof(Channel_Infos) * (g_Max_Channel));
+	//memcpy(g_SubDevice_info_, g_Worker_SubDevice_info_, sizeof(Channel_Infos) * (g_Gateway_info_->maxChannel));
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_SubDevice_info_[i].NetworkInterface.ConnectionStatus = g_Worker_SubDevice_info_[i].NetworkInterface.ConnectionStatus;
 
@@ -796,7 +872,7 @@ void sunapi_manager::UpdateSubdeviceNetworkInterfaceInfos()
 void sunapi_manager::UpdateFirmwareVersionInfos()
 {
 	// firmware version info
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_Worker_SubDevice_info_[i].CheckConnectionStatus != 0)
 		{
@@ -1045,15 +1121,17 @@ bool sunapi_manager::ByPassSUNAPI(int channel, bool json_mode, const std::string
 	return true;
 }
 
-int sunapi_manager::GetMaxChannelByAttribute(std::string strID_PW)
+int sunapi_manager::GetMaxChannelByAttribute(std::string strGatewayIP, std::string strID_PW)
 {
-	// TODO: 여기에 구현 코드 추가.
+	std::string _gatewayIP = strGatewayIP;
+	std::string _idPassword = strID_PW;
+
 	int max_channel = 0;
 
 	std::string request;
 
 	request = "http://";
-	request.append(g_StrDeviceIP);
+	request.append(_gatewayIP);
 	//request.append("/stw-cgi/attributes.cgi/attributes/system/limit/MaxChannel");
 	request.append("/stw-cgi/attributes.cgi");
 
@@ -1068,7 +1146,7 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strID_PW)
 	bool json_mode = true;
 	bool ssl_opt = false;
 
-	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, strID_PW, &strSUNAPIResult);
+	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
 
 	if (res == CURLE_OK)
 	{
@@ -1096,7 +1174,11 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strID_PW)
 
 			max_channel = atoi(ch_str.c_str());
 
-			if (max_channel == 0)
+			if (max_channel > 0)
+			{
+				g_Gateway_info_->maxChannel = max_channel;
+			}
+			else
 			{
 				printf("GetMaxChannelByAttribute() -> max channel : %d\n", max_channel);
 				printf("data : %s\n", strSUNAPIResult.c_str());
@@ -1109,8 +1191,6 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strID_PW)
 		return 0;
 	}
 
-	g_Max_Channel = max_channel;
-
 	return max_channel;
 }
 
@@ -1118,8 +1198,10 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strID_PW)
 // using SUNAPI Command Function
 int sunapi_manager::GetMaxChannel()
 {
-	// TODO: 여기에 구현 코드 추가.
-	return g_Max_Channel;
+	if (g_Gateway_info_)
+		return g_Gateway_info_->maxChannel;
+	else
+		return 0;
 }
 
 int sunapi_manager::GetConnectionCount()
@@ -1452,7 +1534,7 @@ void sunapi_manager::GetDataForDashboardAPI(const std::string& strTopic, const s
 // 1. interface for dashboard - storage
 void sunapi_manager::GetDashboardView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetDashboardView() -> Max Channel : %d ... Dashboard Info ...\n", g_Max_Channel);
+	printf("GetDashboardView() -> Max Channel : %d ... Dashboard Info ...\n", g_Gateway_info_->maxChannel);
 
 	time_t update_time = time(NULL);
 
@@ -1487,7 +1569,7 @@ void sunapi_manager::GetDashboardView(const std::string& strTopic, json_t* json_
 // 2. interface for deviceinfo
 void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetDeviceInfoView() -> Max Channel : %d ... Device Info ...\n", g_Max_Channel);
+	printf("GetDeviceInfoView() -> Max Channel : %d ... Device Info ...\n", g_Gateway_info_->maxChannel);
 
 #if 0
 	GetDataForSubdeviceInfo();
@@ -1498,7 +1580,7 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 	// update gateway info
 	if((g_Gateway_info_->MACAddress == "unknown") || g_Gateway_info_->MACAddress.empty())
 	{
-		bool ret = GetNetworkInterfaceOfGateway();
+		bool ret = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
 
 		// error ??
 		if(!ret)
@@ -1536,7 +1618,7 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 // 3. interface for firmware version info
 void sunapi_manager::GetFirmwareVersionInfoView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetFirmwareVersionInfoView() -> Max Channel : %d ... Firmware Version Info ...\n", g_Max_Channel);
+	printf("GetFirmwareVersionInfoView() -> Max Channel : %d ... Firmware Version Info ...\n", g_Gateway_info_->maxChannel);
 
 	time_t update_time = time(NULL);
 
@@ -1819,7 +1901,7 @@ void sunapi_manager::GetStoragePresenceOfSubdevices()
 #if 0  // not use
 	g_UpdateTimeOfStorageStatus = time(NULL);
 
-	int max_ch = g_Max_Channel;
+	int maxChannel = g_Gateway_info_->maxChannel;
 
 	std::string deviceIP = g_StrDeviceIP;
 	std::string devicePW = g_StrDevicePW;
@@ -1827,7 +1909,7 @@ void sunapi_manager::GetStoragePresenceOfSubdevices()
 	// for test
 	//max_ch = 10; 
 
-	for (int i = 0; i < max_ch; i++)
+	for (int i = 0; i < maxChannel; i++)
 	{
 		//sleep_for(std::chrono::milliseconds(10));
 
@@ -1956,12 +2038,12 @@ void sunapi_manager::GetStorageStatusOfSubdevices()
 
 	std::cout << "GetStorageStatusOfSubdevices() -> Start ... g_UpdateTimeOfStorageStatus : " << g_UpdateTimeOfStorageStatus << std::endl;
 
-	int max_ch = g_Max_Channel;
+	int maxChannel = g_Gateway_info_->maxChannel;
 
 	std::string deviceIP = g_StrDeviceIP;
 	std::string devicePW = g_StrDevicePW;
 
-	for (int i = 0; i < max_ch; i++)
+	for (int i = 0; i < maxChannel; i++)
 	{
 		//sleep_for(std::chrono::milliseconds(10));
 #if 1
@@ -2164,7 +2246,7 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 void sunapi_manager::Set_update_checkForStorageInfo()
 {
 	// for skip to check
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_Storage_info_[i].update_check = true;
 	}
@@ -2172,7 +2254,7 @@ void sunapi_manager::Set_update_checkForStorageInfo()
 
 void sunapi_manager::Reset_update_checkForStorageInfo()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_Storage_info_[i].update_check = false;
 	}
@@ -2180,7 +2262,7 @@ void sunapi_manager::Reset_update_checkForStorageInfo()
 
 int sunapi_manager::ThreadStartSendResponseForDashboardView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	int maxChannel = g_Max_Channel;
+	int maxChannel = g_Gateway_info_->maxChannel;
 	std::thread thread_function([=] { thread_function_for_send_response_for_dashboard(maxChannel, strTopic, strCommand, strType, strView, strTid); });
 	thread_function.detach();
 
@@ -2282,7 +2364,7 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 
 	std::string strDasStatus, strNasStatus;
 
-	for (i = 0; i < g_Max_Channel; i++)
+	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
 		{
@@ -2456,14 +2538,15 @@ bool sunapi_manager::GetDeviceInfoOfSubdevices()
 
 		g_UpdateTimeOfDeviceInfo = time(NULL);
 
-		std::cout << "GetDeviceInfoOfSubdevices() -> Start ... time : " << g_UpdateTimeOfDeviceInfo << std::endl;
+		int maxChannel = g_Gateway_info_->maxChannel;
 
-		int max_ch = g_Max_Channel;
+		//std::cout << "GetDeviceInfoOfSubdevices() -> Start ... maxChannel : " << maxChannel << ", time : " << g_UpdateTimeOfDeviceInfo << std::endl;
+		printf("GetDeviceInfoOfSubdevices() -> Start ... maxChannel : %d , time : %lld\n", maxChannel, g_UpdateTimeOfDeviceInfo);
 
 		std::string deviceIP = g_StrDeviceIP;
 		std::string devicePW = g_StrDevicePW;
 
-		for (int i = 0; i < max_ch; i++)
+		for (int i = 0; i < maxChannel; i++)
 		{
 			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
 				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
@@ -2522,7 +2605,7 @@ void sunapi_manager::thread_function_for_subdevice_info(int channel, const std::
 
 		if (strByPassResult.empty())
 		{
-			printf("[hwanjang] Attributes string is empty !!!\n");
+			printf("[hwanjang] strByPassResult is empty !!!\n");
 		}
 		else
 		{
@@ -2641,7 +2724,7 @@ bool sunapi_manager::GetMacAddressOfSubdevices()
 
 		std::cout << "GetMacAddressOfSubdevices() -> Start ... time : " << g_UpdateTimeOfNetworkInterface << std::endl;
 
-		int max_ch = g_Max_Channel;
+		int maxChannel = g_Gateway_info_->maxChannel;
 
 		std::string deviceIP = g_StrDeviceIP;
 		std::string devicePW = g_StrDevicePW;
@@ -2649,7 +2732,7 @@ bool sunapi_manager::GetMacAddressOfSubdevices()
 		// for test
 		//max_ch = 10; 
 
-		for (int i = 0; i < max_ch; i++)
+		for (int i = 0; i < maxChannel; i++)
 		{
 			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
 				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
@@ -2823,7 +2906,7 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 void sunapi_manager::Set_update_checkForDeviceInfo()
 {
 	// for skip to check
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_SubDevice_info_[i].update_check_deviceinfo = true;
 	}
@@ -2831,7 +2914,7 @@ void sunapi_manager::Set_update_checkForDeviceInfo()
 
 void sunapi_manager::Reset_update_checkForDeviceInfo()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_SubDevice_info_[i].update_check_deviceinfo = false;
 	}
@@ -2850,7 +2933,7 @@ void sunapi_manager::Reset_update_checkForDeviceInfo()
 void sunapi_manager::Set_update_checkForNetworkInterface()
 {
 	// for skip to check
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = true;
 	}
@@ -2858,7 +2941,7 @@ void sunapi_manager::Set_update_checkForNetworkInterface()
 
 void sunapi_manager::Reset_update_checkForNetworkInterface()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = false;
 	}
@@ -2876,7 +2959,7 @@ void sunapi_manager::Reset_update_checkForNetworkInterface()
 
 int sunapi_manager::ThreadStartSendResponseForDeviceInfoView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	int maxChannel = g_Max_Channel;
+	int maxChannel = g_Gateway_info_->maxChannel;
 	std::thread thread_function([=] { thread_function_for_send_response_for_deviceInfo(maxChannel, strTopic, strCommand, strType, strView, strTid); });
 	thread_function.detach();
 
@@ -2994,7 +3077,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	int i = 0, connectionMsgCnt = 0, ipaddressMsgCnt = 0, webportMsgCnt = 0, macaddressMsgCnt = 0, devModelMsgCnt = 0, devNameMsgCnt = 0;
 	char charCh[8];
 
-	for (i = 0; i < g_Max_Channel; i++)
+	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
 		{			
@@ -3143,8 +3226,11 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 // 3. firmware info view
 // Get firmware version - /stw-cgi/system.cgi?msubmenu=deviceinfo&action=view
 
-bool sunapi_manager::GetDeviceInfoOfGateway()
+bool sunapi_manager::GetDeviceInfoOfGateway(const std::string& strGatewayIP, const std::string& strID_PW)
 {
+	std::string _gatewayIP = strGatewayIP;
+	std::string _idPassword = strID_PW;
+
 	// reset
 	g_Gateway_info_->curl_responseCode = CURLE_OPERATION_TIMEDOUT;
 	g_Gateway_info_->ConnectionStatus = "timeout";
@@ -3154,7 +3240,7 @@ bool sunapi_manager::GetDeviceInfoOfGateway()
 	std::string request;
 
 	request = "http://";
-	request.append(g_StrDeviceIP);
+	request.append(_gatewayIP);
 	request.append("/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view");
 
 	//printf("private ID:PW = %s\n",userpw.c_str());
@@ -3168,7 +3254,7 @@ bool sunapi_manager::GetDeviceInfoOfGateway()
 	bool json_mode = true;
 	bool ssl_opt = false;
 
-	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, g_StrDevicePW, &strSUNAPIResult);
+	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
 
 	g_Gateway_info_->curl_responseCode = resCode;
 
@@ -3291,7 +3377,9 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices()
 	std::string deviceIP = g_StrDeviceIP;
 	std::string devicePW = g_StrDevicePW;
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	printf("GetFirmwareVersionOfSubdevices() -> Start ... g_UpdateTimeForFirmwareVersionOfSubdevices : %lld\n", g_UpdateTimeForFirmwareVersionOfSubdevices);
+
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
 			|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
@@ -3575,7 +3663,7 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	int i = 0, fwVersionMsgCnt = 0, latestVersionMsgCnt = 0, upgradeStatusCnt = 0;
 	char charCh[8];
 
-	for (i = 0; i < g_Max_Channel; i++)
+	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
 		{
@@ -3712,7 +3800,7 @@ bool sunapi_manager::GetLatestFirmwareVersionFromFile(std::string file_name)
 	
 	int i = 0, j = 0;
 
-	for (i = 0; i < g_Max_Channel; i++)
+	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		// reset LatestFirmwareVersion and then update ...
 		g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.clear();
@@ -4075,7 +4163,7 @@ void sunapi_manager::thread_function_for_get_latestFirmwareVersion()
 void sunapi_manager::Set_update_check_Firmware_Ver_info_ForFirmwareVersion()
 {
 	// for skip to check
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_Firmware_Ver_info_[i].fw_update_check = true;
 		g_Worker_Firmware_Ver_info_[i].last_fw_update_check = true;
@@ -4084,7 +4172,7 @@ void sunapi_manager::Set_update_check_Firmware_Ver_info_ForFirmwareVersion()
 
 void sunapi_manager::Reset_update_check_Firmware_Ver_info_ForFirmwareVersion()
 {
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Worker_Firmware_Ver_info_[i].fw_update_check = false;
 		g_Worker_Firmware_Ver_info_[i].last_fw_update_check = false;
@@ -4094,7 +4182,7 @@ void sunapi_manager::Reset_update_check_Firmware_Ver_info_ForFirmwareVersion()
 int sunapi_manager::ThreadStartSendResponseForFirmwareView(const std::string strTopic, 
 			std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	int maxChannel = g_Max_Channel;
+	int maxChannel = g_Gateway_info_->maxChannel;
 	std::thread thread_function([=] { thread_function_for_send_response_for_firmwareVersion(maxChannel, strTopic, strCommand, strType, strView, strTid); });
 	thread_function.detach();
 
@@ -4187,11 +4275,11 @@ void sunapi_manager::TestDashboardView()
 
 	UpdateStorageInfos();
 
-	printf("TestDashboardView() -> Max Channel : %d ... Dashboard Info ...\n", g_Max_Channel);
+	printf("TestDashboardView() -> Max Channel : %d ... Dashboard Info ...\n", g_Gateway_info_->maxChannel);
 
 	int connectedCount = 0;
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus == 1)
 		{
@@ -4238,11 +4326,11 @@ void sunapi_manager::TestDeviceInfoView()
 	UpdateSubdeviceInfos();
 	UpdateSubdeviceNetworkInterfaceInfos();
 
-	printf("TestDeviceInfoView() -> Max Channel : %d ... Device Info ...\n", g_Max_Channel);
+	printf("TestDeviceInfoView() -> Max Channel : %d ... Device Info ...\n", g_Gateway_info_->maxChannel);
 
 	int connectedCount = 0;
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus == 1)
 		{
@@ -4281,11 +4369,11 @@ void sunapi_manager::TestFirmwareVersionInfoView()
 	UpdateSubdeviceInfos();
 #endif
 
-	printf("TestFirmwareVersionInfoView() -> Max Channel : %d ... Device Info ...\n", g_Max_Channel);
+	printf("TestFirmwareVersionInfoView() -> Max Channel : %d ... Device Info ...\n", g_Gateway_info_->maxChannel);
 
 	int connectedCount = 0;
 
-	for (int i = 0; i < g_Max_Channel; i++)
+	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		if (g_SubDevice_info_[i].CheckConnectionStatus == 1)
 		{
@@ -4399,11 +4487,12 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 		return ;
 	}
 
-	//std::string strPassword = charID;
-	std::string strPassword = "admin";
+	//std::string strPassword = "admin";
+	std::string strPassword = charID;	
 	strPassword.append(":");
 	strPassword.append(charPassword);
 
+#if 0
 	int maxCh = 0;
 	maxCh = GetMaxChannelByAttribute(strPassword);
 
@@ -4426,6 +4515,27 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 	}
 
 	GetDeviceInfoOfGateway();
+#else
+	bool result = GetDeviceInfoOfGateway(g_StrDeviceIP,strPassword);
+
+	if (!result)
+	{
+		printf("Error ... CommandCheckPassword() -> It means that the wrong username or password were sent in the request.\n");
+
+		json_object_set(sub_Msg, "responseCode", json_integer(403));
+		json_object_set(sub_Msg, "deviceModel", json_string(""));
+		json_object_set(sub_Msg, "deviceFirmwareVersion", json_string(""));
+		json_object_set(sub_Msg, "maxChannels", json_integer(0));
+
+		json_object_set(main_ResponseMsg, "message", sub_Msg);
+
+		strMQTTMsg = json_dumps(main_ResponseMsg, 0);
+
+		observerForHbirdManager->SendResponseToPeer(strTopic, strMQTTMsg);
+
+		return;
+	}
+#endif
 
 	json_object_set(sub_Msg, "responseCode", json_integer(200));
 
@@ -4437,7 +4547,7 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 
 	json_object_set(sub_Msg, "deviceFirmwareVersion", json_string(strDeviceVersion.c_str()));
 
-	json_object_set(sub_Msg, "maxChannels", json_integer(maxCh));
+	json_object_set(sub_Msg, "maxChannels", json_integer(g_Gateway_info_->maxChannel));
 
 	json_object_set(main_ResponseMsg, "message", sub_Msg);
 

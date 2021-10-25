@@ -84,6 +84,7 @@ typedef struct gateway_Info {
 	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	int curl_responseCode;
 	int WebPort;
+	int maxChannel;
 	std::string DeviceModel;
 	std::string IPv4Address;
 	std::string MACAddress;
@@ -139,13 +140,7 @@ public:
 	~sunapi_manager();
 
 	void RegisterObserverForHbirdManager(ISUNAPIManagerObserver* callback);
-	void SunapiManagerInit();
-
-	bool GetNetworkInterfaceOfGateway();
-
-	void ResetGatewayInfo();
-	void ResetNetworkInterfaceOfGateway();
-	void ResetDeviceInfoOfGateway();
+	bool SunapiManagerInit();
 
 	int GetMaxChannel();
 	int GetConnectionCount();
@@ -170,10 +165,16 @@ public:
 
 protected:
 	// reset
+	void ResetGatewayInfo();
+	void ResetNetworkInterfaceOfGateway();
+	void ResetDeviceInfoOfGateway();
+
 	void ResetStorageInfos();
 	void ResetStorageInfoForChannel(int channel);
+
 	void ResetSubdeviceInfos();
 	void ResetSubdeviceInfoForChannel(int channel);
+
 	void ResetFirmwareVersionInfos();
 	void ResetFirmwareVersionInfoForChannel(int channel);
 
@@ -185,6 +186,15 @@ protected:
 
 	int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
+	// Update Gateway info
+	bool GetGatewayInfo(const std::string& strGatewayIP, const std::string& strID_PW);
+	bool GetNetworkInterfaceOfGateway(const std::string& strGatewayIP, const std::string& strID_PW);
+	bool GetDeviceInfoOfGateway(const std::string& strGatewayIP, const std::string& strID_PW);
+
+	int GetMaxChannelByAttribute(std::string strIP, std::string strID_PW);
+	bool GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW, CURLcode* resCode);
+	void SendErrorResponseForGateway(const std::string& strTopic, json_t* json_strRoot, std::string strError);
+
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 #if 0
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult);
@@ -193,10 +203,6 @@ protected:
 #endif
 
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
-
-	int GetMaxChannelByAttribute(std::string strID_PW);
-	bool GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW, CURLcode* resCode);
-	void SendErrorResponseForGateway(const std::string& strTopic, json_t* json_strRoot, std::string strError);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 1. dashboard view
@@ -249,8 +255,6 @@ protected:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 3. firmware info view
-
-	bool GetDeviceInfoOfGateway();
 
 	bool GetFirmwareVersionFromText(std::string strText, std::string* strResult);
 
