@@ -109,6 +109,7 @@ typedef struct channel_Info {
 	std::string ConnectionStatus; // Disconnected , Success , ConnectFail
 	std::string DeviceModel;	// camera model
 	std::string DeviceName;		// 21.09.06 add - sub device name
+	std::string ChannelTitle;	// 21.10.27 add - sub Channel Title 
 	SubDevice_NetworkInterface_Info NetworkInterface;
 	//std::string LinkStatus;		// Connected , Disconnected
 	//std::string IPv4Address;

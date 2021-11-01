@@ -105,8 +105,6 @@ void sunapi_manager::RegisterObserverForHbirdManager(ISUNAPIManagerObserver* cal
 
 bool sunapi_manager::SunapiManagerInit()
 {
-	// TODO: 여기에 구현 코드 추가.
-
 	/// <summary>
 	///  Get Gateway IP , ID & PW
 	/// </summary>
@@ -700,6 +698,7 @@ void sunapi_manager::ResetSubdeviceInfos()
 		g_SubDevice_info_[i].ConnectionStatus.clear();
 		g_SubDevice_info_[i].DeviceModel.clear();
 		g_SubDevice_info_[i].DeviceName.clear();
+		g_SubDevice_info_[i].ChannelTitle.clear();
 
 		g_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
 		g_SubDevice_info_[i].NetworkInterface.IPv4Address.clear();
@@ -716,6 +715,7 @@ void sunapi_manager::ResetSubdeviceInfos()
 		g_Worker_SubDevice_info_[i].ConnectionStatus.clear();
 		g_Worker_SubDevice_info_[i].DeviceModel.clear();
 		g_Worker_SubDevice_info_[i].DeviceName.clear();
+		g_Worker_SubDevice_info_[i].ChannelTitle.clear();
 
 		g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
 		g_Worker_SubDevice_info_[i].NetworkInterface.IPv4Address.clear();
@@ -738,6 +738,7 @@ void sunapi_manager::ResetSubdeviceInfoForChannel(int channel)
 	g_SubDevice_info_[channel].ConnectionStatus.clear();
 	g_SubDevice_info_[channel].DeviceModel.clear();
 	g_SubDevice_info_[channel].DeviceName.clear();
+	g_SubDevice_info_[channel].ChannelTitle.clear();
 
 	g_SubDevice_info_[channel].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
 	g_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
@@ -754,6 +755,7 @@ void sunapi_manager::ResetSubdeviceInfoForChannel(int channel)
 	g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
 	g_Worker_SubDevice_info_[channel].DeviceModel.clear();
 	g_Worker_SubDevice_info_[channel].DeviceName.clear();
+	g_Worker_SubDevice_info_[channel].ChannelTitle.clear();
 
 	g_Worker_SubDevice_info_[channel].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
 	g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
@@ -845,6 +847,8 @@ void sunapi_manager::UpdateSubdeviceInfos()
 			if(g_Worker_SubDevice_info_[i].DeviceName.empty() != true)
 				g_SubDevice_info_[i].DeviceName = g_Worker_SubDevice_info_[i].DeviceName;
 
+			if (g_Worker_SubDevice_info_[i].ChannelTitle.empty() != true)
+				g_SubDevice_info_[i].ChannelTitle = g_Worker_SubDevice_info_[i].ChannelTitle;
 			printf("UpdateSubdeviceInfos() -> index : %d , DeviceModel : %s, DeviceName : %s\n", i, g_SubDevice_info_[i].DeviceModel.c_str(), g_SubDevice_info_[i].DeviceName.c_str());
 		}
 	}
@@ -1404,6 +1408,17 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							else
 							{
 								g_Worker_SubDevice_info_[index].IsBypassSupported = IsBypassSupported;
+							}
+
+							// Title - channel name
+							result = json_unpack(obj, "{s:s}", "Title", &charTitle);
+							if (result)
+							{
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , Title\n", index);
+							}
+							else
+							{
+								g_Worker_SubDevice_info_[index].ChannelTitle = charTitle;
 							}
 						}
 						else
@@ -3048,13 +3063,12 @@ void sunapi_manager::thread_function_for_send_response_for_deviceInfo(int maxCha
 // Send subdevice info for deviceinfo 
 void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-#if 1
-	std::string strVersion = "1.5";
+#if 1	
 	// sub of message
 	//std::string strDeviceType = HBIRD_DEVICE_TYPE;
 	std::string strDeviceModel = HBIRD_DEVICE_TYPE;	// temp
 
-	json_t* main_ResponseMsg, *sub_Msg, *sub_SubdeviceMsg, *sub_ConnectionMsg, *sub_IPAddressMsg, *sub_WebprotMsg, *sub_MacAddressMsg, *sub_DeviceModelMsg, *sub_DeviceNameMsg ;
+	json_t* main_ResponseMsg, *sub_Msg, *sub_SubdeviceMsg, *sub_ConnectionMsg, *sub_IPAddressMsg, *sub_WebprotMsg, *sub_MacAddressMsg, *sub_DeviceModelMsg, *sub_DeviceNameMsg, *sub_ChannelTitleMsg;
 
 	main_ResponseMsg = json_object();
 	sub_Msg = json_object();
@@ -3065,6 +3079,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	sub_MacAddressMsg = json_object();
 	sub_DeviceModelMsg = json_object();
 	sub_DeviceNameMsg = json_object();
+	sub_ChannelTitleMsg = json_object();
 
 	//main_Msg["command"] = "dashboard";
 	json_object_set(main_ResponseMsg, "command", json_string(strCommand.c_str()));
@@ -3074,7 +3089,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	json_object_set(main_ResponseMsg, "view", json_string(strView.c_str()));
 
 	// ipaddress of subdevice
-	int i = 0, connectionMsgCnt = 0, ipaddressMsgCnt = 0, webportMsgCnt = 0, macaddressMsgCnt = 0, devModelMsgCnt = 0, devNameMsgCnt = 0;
+	int i = 0, connectionMsgCnt = 0, ipaddressMsgCnt = 0, webportMsgCnt = 0, macaddressMsgCnt = 0, devModelMsgCnt = 0, devNameMsgCnt = 0, channelTitleMsgCnt=0;
 	char charCh[8];
 
 	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
@@ -3153,6 +3168,13 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 				json_object_set_new(sub_DeviceNameMsg, charCh, json_string(g_SubDevice_info_[i].DeviceName.c_str()));
 				devNameMsgCnt++;
 			}
+
+			// ChannelTitle of subdevice -  21.10.27 add
+			if (g_SubDevice_info_[i].ChannelTitle.empty() != true)
+			{
+				json_object_set_new(sub_ChannelTitleMsg, charCh, json_string(g_SubDevice_info_[i].ChannelTitle.c_str()));
+				channelTitleMsgCnt++;
+			}
 		}
 	}
 
@@ -3192,6 +3214,12 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 		json_object_set(sub_SubdeviceMsg, "subdeviceName", sub_DeviceNameMsg);
 	}
 
+	// 21.10.27 add - subChannelTitle 
+	if (channelTitleMsgCnt > 0)
+	{
+		json_object_set(sub_SubdeviceMsg, "Title", sub_ChannelTitleMsg);
+	}
+
 	// sub of message
 	//json_object_set(sub_Msg, "deviceId", json_string(g_Device_id.c_str()));
 	//json_object_set(sub_Msg, "deviceType", json_string(strDeviceType.c_str()));
@@ -3209,6 +3237,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	//main_Msg["tid"] = strTid;
 	json_object_set(main_ResponseMsg, "tid", json_string(strTid.c_str()));
 	//main_Msg["version"] = "1.5";
+	std::string strVersion = "1.5";
 	json_object_set(main_ResponseMsg, "version", json_string(strVersion.c_str()));
 
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);		
@@ -3639,7 +3668,6 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 
 void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	std::string strVersion = "1.5";
 	// sub of message
 	std::string strDeviceType = HBIRD_DEVICE_TYPE;
 
@@ -3717,6 +3745,13 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	//json_object_set(sub_Msg, "deviceType", json_string(strDeviceType.c_str()));
 	if (g_Gateway_info_->FirmwareVersion.empty() != true)
 		json_object_set(sub_Msg, "firmwareVersion", json_string(g_Gateway_info_->FirmwareVersion.c_str()));
+	else
+	{
+		char tempVersion[16] = { 0, };
+		sprintf(tempVersion,"%s", __DATE__);
+
+		json_object_set(sub_Msg, "firmwareVersion", json_string(tempVersion));
+	}
 
 	json_object_set(sub_Msg, "connection", json_string(g_Gateway_info_->ConnectionStatus.c_str()));
 	json_object_set(sub_Msg, "subdevice", sub_SubdeviceMsg);
@@ -3728,6 +3763,7 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	//main_Msg["tid"] = strTid;
 	json_object_set(main_ResponseMsg, "tid", json_string(strTid.c_str()));
 	//main_Msg["version"] = "1.5";
+	std::string strVersion = "1.5";
 	json_object_set(main_ResponseMsg, "version", json_string(strVersion.c_str()));
 
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);		
@@ -4545,7 +4581,10 @@ void sunapi_manager::CommandCheckPassword(const std::string& strTopic, const std
 
 	std::string strDeviceVersion = g_Gateway_info_->FirmwareVersion;
 
-	json_object_set(sub_Msg, "deviceFirmwareVersion", json_string(strDeviceVersion.c_str()));
+	if(!strDeviceVersion.empty())
+		json_object_set(sub_Msg, "deviceFirmwareVersion", json_string(strDeviceVersion.c_str()));
+	else
+		json_object_set(sub_Msg, "deviceFirmwareVersion", json_string("unknown"));
 
 	json_object_set(sub_Msg, "maxChannels", json_integer(g_Gateway_info_->maxChannel));
 

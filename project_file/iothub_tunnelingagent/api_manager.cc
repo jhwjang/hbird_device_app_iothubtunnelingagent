@@ -371,7 +371,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	const char* key;
 
 	json_object_foreach(jmsg_headers, key, value) {
-		printf("key: %s", key);
+		printf("key: %s\n", key);
 		if (!strncmp("host", key, 4))
 		{
 			strHost = json_string_value(value);
@@ -400,6 +400,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	}
 #endif
 	// --------------------- Requset PARSERED Headers End -------------------------------
+
 	std::string strRepuestPort = "443";
 
 	if (strProtocol != "https")
@@ -660,7 +661,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 
 		//printf("[hwanjang HttpTunnelingCommand() response ---> send message size: %d\n%s\n", sendMsg.size() , sendMsg.c_str());
 
-		printf("[hwanjang HttpTunnelingCommand() response ---> send message size: %lu\n", msgProtocolByte.size());
+		printf("[hwanjang] HttpTunnelingCommand() response ---> send message size: %lu\n", msgProtocolByte.size());
 
 		observerForHbirdManager->SendResponseToPeerForTunneling(strTopic, &msgProtocolByte[0], msgProtocolByte.size());
 	}
