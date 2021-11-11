@@ -1287,7 +1287,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 			int result;
 			int i = 0, j = 0;
 			size_t index;
-			char* charStatus, * charIPAddress, * charModel;
+			char* charStatus, * charIPAddress, * charModel, *charTitle;
 			bool* IsBypassSupported;
 			json_t* obj;
 
@@ -1360,7 +1360,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 					if (g_Worker_SubDevice_info_[index].CheckConnectionStatus != 0)  // Success , ConnectFail , timeout , AuthFail
 					{
 						webPort = -1;
-						result = json_unpack(obj, "{s:s, s:i, s:s, s:b}", "IPAddress", &charIPAddress, "HTTPPort", &webPort, "Model", &charModel, "IsBypassSupported", &IsBypassSupported);
+						result = json_unpack(obj, "{s:s, s:s, s:s, s:i, s:b}", "Model", &charModel, "Title", &charTitle, "IPAddress", &charIPAddress, "HTTPPort", &webPort, "IsBypassSupported", &IsBypassSupported);
 						if (result)
 						{
 							printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d !!!\n", index);
@@ -1370,7 +1370,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:s}", "IPAddress", &charIPAddress);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , Model\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , IPAddress\n", index);
 							}
 							else
 							{
@@ -1424,6 +1424,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						else
 						{
 							g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address = charIPAddress;
+							g_Worker_SubDevice_info_[index].ChannelTitle = charTitle;
 							g_Worker_SubDevice_info_[index].HTTPPort = webPort;
 							g_Worker_SubDevice_info_[index].DeviceModel = charModel;
 							g_Worker_SubDevice_info_[index].IsBypassSupported = IsBypassSupported;
