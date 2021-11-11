@@ -146,11 +146,6 @@ public:
 	int GetMaxChannel();
 	int GetConnectionCount();
 
-	// For Test
-	void TestDashboardView();
-	void TestDeviceInfoView();
-	void TestFirmwareVersionInfoView();
-
 	void GetDataForDashboardAPI(const std::string& strTopic, const std::string& strPayload);
 
 	// interface
