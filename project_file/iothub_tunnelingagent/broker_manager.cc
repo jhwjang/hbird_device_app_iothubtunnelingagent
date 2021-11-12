@@ -12,24 +12,30 @@
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
 
 BrokerManager::BrokerManager() {
-	printf("[hwanjang] BrokerManager -> constructor !!!\n");
 
 	mMQTT_manager_for_broker_ = nullptr;
+
+	g_broker_group_id.clear();
+	g_broker_agent_id.clear();
+	g_broker_agent_key.clear();
 }
 
-BrokerManager::BrokerManager(std::string broker_agent_id, std::string broker_agent_key) {
+BrokerManager::BrokerManager(std::string broker_group_id, std::string broker_agent_id, std::string broker_agent_key) {
 
-	printf("[hwanjang] BrokerManager -> constructor ... \nbroker_agent_id : %s\nbroker_agent_key : %s\n", 
-							broker_agent_id.c_str(), broker_agent_key.c_str());
+#ifdef HWANJANG_DEBUG
+	printf("[hwanjang] BrokerManager -> constructor ... \nbroker_group_id : %s, broker_agent_id : %s\nbroker_agent_key : %s\n", 
+		broker_group_id.c_str(), broker_agent_id.c_str(), broker_agent_key.c_str());
+#endif
 
 	mMQTT_manager_for_broker_ = nullptr;
 
+	g_broker_group_id = broker_group_id;
 	g_broker_agent_id = broker_agent_id;
 	g_broker_agent_key = broker_agent_key;
+
 }
 
 BrokerManager::~BrokerManager() {
-	printf("[hwanjang] BrokerManager::~BrokerManager() -> Destructor !!!\n");
 
 	if (mMQTT_manager_for_broker_)
 		delete mMQTT_manager_for_broker_;
@@ -37,9 +43,11 @@ BrokerManager::~BrokerManager() {
 
 void BrokerManager::StartBrokerManager()
 {
-	std::cout << "BrokerManager::StartBrokerManager() -> Init_MQTT ... " << std::endl;
+#ifdef HWANJANG_DEBUG
+	std::cout << "BrokerManager::StartBrokerManager() -> StartBrokerManager() ... " << std::endl;
+#endif
 
-	if (!Init_MQTT(g_broker_agent_id, g_broker_agent_key))
+	if (!Init_MQTT(g_broker_group_id, g_broker_agent_id, g_broker_agent_key))
 	{
 		printf("[hwanjang] * * *Error !!! StartBrokerManager() ->  server-> MQTT_Init is failed !! -- > exit !!!\n");
 		exit(1);
@@ -49,7 +57,7 @@ void BrokerManager::StartBrokerManager()
 	Start_MQTT();
 }
 
-bool BrokerManager::Init_MQTT(std::string agent_id, std::string agent_key)
+bool BrokerManager::Init_MQTT(std::string broker_group_id, std::string agent_id, std::string agent_key)
 {
 
 	// 2018.02.25 hwanjan - CA file check
@@ -122,7 +130,7 @@ bool BrokerManager::Init_MQTT(std::string agent_id, std::string agent_key)
     mMqtt_server_ = "tcp://localhost:1883";  // test for mosquitto broker
 
 	// Create MQTT Manager 
-	mMQTT_manager_for_broker_ = new MQTTManager_for_broker(mMqtt_server_, agent_id, agent_key);
+	mMQTT_manager_for_broker_ = new MQTTManager_for_broker(mMqtt_server_, broker_group_id, agent_id, agent_key);
 	mMQTT_manager_for_broker_->RegisterObserverForMQTT(this);
 	mMQTT_manager_for_broker_->init(strCAFilePath);
 
@@ -172,16 +180,20 @@ void BrokerManager::thread_function_for_MQTTMsg(mqtt::const_message_ptr mqttMsg)
 
 	if (topic.find("command") != std::string::npos)
 	{
-		printf("Received command ...\n");
+#ifdef HWANJANG_DEBUG
+		printf("[hwanjang] BrokerManager::thread_function_for_MQTTMsg() -> Received command ... topic : %s\n", topic.c_str());
+#endif
 		process_command(topic, mqttMsg);
 	}
 	else if (topic.find("message") != std::string::npos)
 	{
-		printf("Received message ...\n");		
+#ifdef HWANJANG_DEBUG
+		printf("[hwanjang] BrokerManager::thread_function_for_MQTTMsg() -> Received message ... topic : %s\n", topic.c_str());
+#endif
 	}
 	else
 	{
-		printf("Received unknown topic ... %s \n", topic.c_str());
+		printf("[hwanjang] BrokerManager::thread_function_for_MQTTMsg() -> Received unknown topic ... %s \n", topic.c_str());
 	}
 }
 
@@ -189,9 +201,9 @@ void BrokerManager::process_command(const std::string& strTopic, mqtt::const_mes
 {
 	std::string strPayload = mqttMsg->get_payload_str().c_str();
 
-
+#ifdef HWANJANG_DEBUG
 	printf("BrokerManager::process_command() -> receive command : %s\n", strPayload.c_str());
-
+#endif
 
 	if (strPayload.find("CloudServiceStatus") != std::string::npos)
 	{
@@ -201,12 +213,26 @@ void BrokerManager::process_command(const std::string& strTopic, mqtt::const_mes
 		std::this_thread::sleep_for(std::chrono::seconds(10));
 
 		std::string strPayload = mqttMsg->get_payload_str().c_str();
+		
 		std::string target_app = "serviceTray";
 
 		SendCloudServiceStatus(target_app);
 #endif
 	}
+}
 
+void BrokerManager::process_message(const std::string& strTopic, mqtt::const_message_ptr mqttMsg)
+{
+	std::string strPayload = mqttMsg->get_payload_str().c_str();
+
+#ifdef HWANJANG_DEBUG
+	printf("BrokerManager::process_message() -> receive message : %s\n", strPayload.c_str());
+#endif
+
+	if (strPayload.find("exit") != std::string::npos)
+	{
+		// exit !!!!!!!!!!!!!!!!
+	}
 }
 
 void BrokerManager::CommandRequestCloudServiceStatus(const std::string& strTopic, const std::string& strPayload)
@@ -262,7 +288,9 @@ void BrokerManager::CommandRequestCloudServiceStatus(const std::string& strTopic
 
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
+#ifdef HWANJANG_DEBUG
 	printf("[hwanjang] BrokerManager::CommandRequestCloudServiceStatus() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+#endif
 
 	SendResponseToPeer(strTopic, strMQTTMsg);
 }
@@ -275,7 +303,7 @@ void BrokerManager::SendToPeer(const std::string& target_app, const std::string&
 
 void BrokerManager::SendResponseToPeer(const std::string& topic, const std::string& message)
 {
-#if 1 // debug
+#ifdef HWANJANG_DEBUG // debug
 	printf("** HummingbirdManager::SendResponseToPeer() -> Start !!\n");
 	printf("--> topic : %s\n", topic.c_str());
 #endif
@@ -284,13 +312,12 @@ void BrokerManager::SendResponseToPeer(const std::string& topic, const std::stri
 
 void BrokerManager::SendResponseToPeerForTunneling(const std::string& topic, const void* payload, int size)
 {
-#if 0 // debug
+#ifdef HWANJANG_DEBUG
 	printf("** HummingbirdManager::SendResponseToPeer() -> Start !!\n");
 	printf("--> topic : %s\n", topic.c_str());
 #endif
 	mMQTT_manager_for_broker_->OnResponseCommandMessage(topic, payload, size);
 }
-
 
 void BrokerManager::SendCloudServiceStatus(const std::string& target_app_id)
 {
@@ -306,10 +333,14 @@ void BrokerManager::SendCloudServiceStatus(const std::string& target_app_id)
 
 	srand((unsigned int)time(NULL));
 	int tid = rand() % 10000;
-
+#if 0
 	std::stringstream ss;
 	ss << tid;
 	std::string result = ss.str();
+#else
+	char result[8] = { 0, };
+	sprintf_s(result, sizeof(result), "%d", tid);
+#endif
 
 	strTid.append(result);
 
@@ -324,10 +355,11 @@ void BrokerManager::SendCloudServiceStatus(const std::string& target_app_id)
 
 	std::string strMQTTMsg = json_dumps(mqtt_MainMsg, 0);
 
+#ifdef HWANJANG_DEBUG
 	printf("[hwanjang] BrokerManager::SendCloudServiceStatus() ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+#endif
 
 	std::string topic_type = "message";	
-
+	
 	SendToPeer(target_app_id, topic_type, strMQTTMsg);
-
 }

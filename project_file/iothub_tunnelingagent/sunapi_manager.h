@@ -8,6 +8,9 @@
 #include "curl/curl.h"
 
 #include "jansson.h"
+#include "setting_ini.h"
+
+#include "define_for_debug.h"
 
 typedef struct MemoryStruct {
 	char* memory;
@@ -57,6 +60,7 @@ typedef struct firmware_update_Info {
 //  - das_enable , das_overwrite
 
 typedef struct storage_Info {
+	time_t storage_update_time;
 	bool update_check;
 	bool das_presence;
 	bool sdfail;
@@ -64,7 +68,7 @@ typedef struct storage_Info {
 	bool nasfail;
 	bool das_enable;			// on or off of DAS recording
 	bool nas_enable;			// on or off of NAS recording
-	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError
+	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 :unknown
 	int curl_responseCode;
 	std::string das_status;  // normal, Active, SDfailure, ... , timeout, authError
 	std::string nas_status;  // normal, Active, failure, timeout, authError
@@ -83,7 +87,7 @@ typedef struct storage_Info {
 typedef struct gateway_Info {
 	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	int curl_responseCode;
-	int WebPort;
+	int HttpsPort;
 	int maxChannel;
 	std::string DeviceModel;
 	std::string IPv4Address;
@@ -94,6 +98,7 @@ typedef struct gateway_Info {
 
 typedef struct networkinterface_Info {
 	bool update_check_networkinterface;
+	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	std::string ConnectionStatus; // Disconnected , Success , ConnectFail
 	std::string LinkStatus;		// Connected , Disconnected
 	std::string IPv4Address;
@@ -101,15 +106,17 @@ typedef struct networkinterface_Info {
 } SubDevice_NetworkInterface_Info;
 
 typedef struct channel_Info {
+	time_t channel_update_time;
 	bool update_check_deviceinfo;
 	bool IsBypassSupported;		
 	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	int curl_responseCode;
 	int HTTPPort;	
-	std::string ConnectionStatus; // Disconnected , Success , ConnectFail
+	std::string ConnectionStatus; // Disconnected , Success , ConnectFail , authError, timeout , unknown
 	std::string DeviceModel;	// camera model
 	std::string DeviceName;		// 21.09.06 add - sub device name
 	std::string ChannelTitle;	// 21.10.27 add - sub Channel Title 
+	std::string Channel_FirmwareVersion;
 	SubDevice_NetworkInterface_Info NetworkInterface;
 	//std::string LinkStatus;		// Connected , Disconnected
 	//std::string IPv4Address;
@@ -118,6 +125,7 @@ typedef struct channel_Info {
 
 
 typedef struct firmware_version_Info {
+	time_t version_update_time;
 	bool fw_update_check;
 	bool last_fw_update_check;
 	int curl_responseCode;
@@ -137,11 +145,15 @@ struct ISUNAPIManagerObserver {
 class sunapi_manager
 {
 public:
-	sunapi_manager(const std::string& strDeviceID, int nWebPort);
+	sunapi_manager();
 	~sunapi_manager();
 
 	void RegisterObserverForHbirdManager(ISUNAPIManagerObserver* callback);
-	bool SunapiManagerInit();
+#ifndef USE_ARGV_JSON
+	bool SunapiManagerInit(const std::string strIP, const std::string strPW, const std::string& strDeviceID, int nWebPort);
+#else
+	bool SunapiManagerInit(Setting_Infos* infos);
+#endif
 
 	int GetMaxChannel();
 	int GetConnectionCount();
@@ -196,6 +208,7 @@ protected:
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult);
 #else  // add timeout option
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult);
+	CURLcode curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, void *chunk_data);
 #endif
 
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
@@ -205,17 +218,13 @@ protected:
 
 	void GetDASPresenceOfSubdevice(int channel, const std::string deviceIP, const std::string devicePW);
 	void GetNASPresenceOfSubdevice(int channel, const std::string deviceIP, const std::string devicePW);
-	
-	void GetStoragePresenceOfSubdevices();
+
 	int ThreadStartForStoragePresence(int channel, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_storage_presence(int channel, const std::string deviceIP, const std::string devicePW);
 
 	void GetStorageStatusOfSubdevices();
 	int ThreadStartForStorageStatus(int channel, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_storage_status(int channel, const std::string deviceIP, const std::string devicePW);
-
-	void GetDataForStorageInfo();
-
 
 	void SendResponseForDashboardView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 	
@@ -238,7 +247,6 @@ protected:
 	int ThreadStartForNetworkInterface(int index, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_network_interface(int index, const std::string deviceIP, const std::string devicePW);
 
-	void GetDataForSubdeviceInfo();
 	void SendResponseForDeviceInfoView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	void Set_update_checkForDeviceInfo();
@@ -263,7 +271,7 @@ protected:
 	bool GetLatestFirmwareVersionFromFile(std::string file_name);
 	bool GetLatestFirmwareVersionFromURL(std::string update_FW_Info_url);
 
-	void GetDataForFirmwareVersionInfo();
+	bool GetDataForFirmwareVersionInfo();
 		
 	int ThreadStartGetLatestFirmwareVersionFromURL();
 	void thread_function_for_get_latestFirmwareVersion();
@@ -296,20 +304,20 @@ private:
 
 	std::string g_StrDeviceIP;
 	std::string g_StrDevicePW;
-	int g_WebPort;
+	int g_HttpsPort;
 
-	int g_Sub_camera_reg_Cnt;
-	int g_Sub_network_info_Cnt;
-	int g_Sub_device_info_Cnt;
 
-	time_t g_UpdateTimeOfStoragePresence;
-	time_t g_UpdateTimeOfStorageStatus;  // for 1. dashboard - storage status
-
+	bool g_CheckUpdateOfRegistered;
 	time_t g_UpdateTimeOfRegistered;	
-	time_t g_UpdateTimeOfDeviceInfo;
-	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info
+
+	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info - 21.11.04 no longer used
 
 	time_t g_UpdateTimeForFirmwareVersionOfSubdevices; // for 3. firmware version
+	time_t g_UpdateTimeForlatestFirmwareVersion;
+
+	time_t g_StartTimeOfStorageStatus;
+	time_t g_StartTimeOfDeviceInfo;
+	time_t g_StartTimeForFirmwareVersionView;
 
 	ISUNAPIManagerObserver* observerForHbirdManager;
 

@@ -1,5 +1,3 @@
-#include "sunapi_manager.h"
-
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,21 +7,24 @@
 #include <chrono>
 #include <vector>
 
-#define HWANJANG_DEBUG
+#include "sunapi_manager.h"
+
+#define USE_HTTPS
 
 #define HBIRD_DEVICE_TYPE "gateway"
 
 using std::this_thread::sleep_for;
-#define SLEEP_TIME 2
+#define SLEEP_TIME 1
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-#define GET_WAIT_TIMEOUT 5 
-#define CURL_TIMEOUT 5 
+#define GET_WAIT_TIMEOUT 5
+#define CURL_TIMEOUT 0 
 #define CURL_CONNECTION_TIMEOUT 3  
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
 #define FIRMWARE_INFO_FILE "fw_info.txt"
+#define CA_FILE_PATH "config/ca-certificates.crt"
 
 std::mutex g_Mtx_lock_storage;
 std::mutex g_Mtx_lock_device;
@@ -46,29 +47,29 @@ Channel_Infos* g_Worker_SubDevice_info_;
 Firmware_Version_Infos* g_Firmware_Ver_info_;
 Firmware_Version_Infos* g_Worker_Firmware_Ver_info_;
 
-sunapi_manager::sunapi_manager(const std::string& strDeviceID, int nWebPort)
+sunapi_manager::sunapi_manager()
 {
-	g_Device_id = strDeviceID;
-	g_WebPort = nWebPort;
-
 	g_Max_Channel = 0;
+	g_HttpsPort = 0;
 
+	g_Device_id.clear();
 	g_StrDeviceIP.clear();
 	g_StrDevicePW.clear();
 
 	g_RegisteredCameraCnt = 0;
 	g_ConnectionCnt = 0;
 
-	g_Sub_camera_reg_Cnt = 0;
-	g_Sub_network_info_Cnt = 0;
-	g_Sub_device_info_Cnt = 0;
-
+	g_CheckUpdateOfRegistered = true;
 	g_UpdateTimeOfRegistered = 0;
-	g_UpdateTimeOfStoragePresence = 0;
-	g_UpdateTimeOfStorageStatus = 0;
-	g_UpdateTimeOfDeviceInfo = 0;
+
 	g_UpdateTimeOfNetworkInterface = 0;
+
 	g_UpdateTimeForFirmwareVersionOfSubdevices = 0;
+	g_UpdateTimeForlatestFirmwareVersion = 0;
+
+	g_StartTimeOfStorageStatus = 0;
+	g_StartTimeOfDeviceInfo = 0;
+	g_StartTimeForFirmwareVersionView = 0;
 
 	observerForHbirdManager = nullptr;
 }
@@ -103,26 +104,14 @@ void sunapi_manager::RegisterObserverForHbirdManager(ISUNAPIManagerObserver* cal
 	observerForHbirdManager = callback;
 }
 
-bool sunapi_manager::SunapiManagerInit()
+#ifndef USE_ARGV_JSON
+bool sunapi_manager::SunapiManagerInit(const std::string strIP, const std::string strPW, const std::string& strDeviceID, int nWebPort)
 {
-	/// <summary>
-	///  Get Gateway IP , ID & PW
-	/// </summary>
+	g_StrDeviceIP = strIP;
+	g_StrDevicePW = strPW;
 
-	std::string strIP, strPW;
-
-	bool result = GetDeviceIP_PW(&strIP, &strPW);
-
-	if ((result != true) || strIP.empty() || strPW.empty())
-	{
-		g_StrDeviceIP = "127.0.0.1";
-		g_StrDevicePW = "admin:5tkatjd!";
-	}
-	else
-	{
-		g_StrDeviceIP = strIP;
-		g_StrDevicePW = strPW;
-	}
+	g_Device_id = strDeviceID;
+	g_WebPort = nWebPort;
 
 	printf("sunapi_manager_init() -> g_StrDeviceIP : %s , g_StrDevicePW : %s\n", g_StrDeviceIP.c_str(), g_StrDevicePW.c_str());
 
@@ -151,7 +140,7 @@ bool sunapi_manager::SunapiManagerInit()
 
 	ResetGatewayInfo();
 
-	result = GetNetworkInterfaceOfGateway();
+	bool result = GetNetworkInterfaceOfGateway();
 
 	// error ??
 	if (!result)
@@ -174,7 +163,9 @@ bool sunapi_manager::SunapiManagerInit()
 
 	ResetGatewayInfo();
 
-	result = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
+	g_Gateway_info_->MACAddress = "unknown";
+
+	bool result = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
 
 #endif
 
@@ -226,67 +217,168 @@ bool sunapi_manager::SunapiManagerInit()
 		}
 	}
 
-#if 1
-	//GetMacAddressOfSubdevices();
+	printf("[hwanjang] sunapi_manager::SunapiManagerInit() ... End ... return %d\n", result);
+
+	return result;
+}
 #else
-	GetMacAddressOfSubdevices();
 
-	// Get Storage info
-	GetStoragePresenceOfSubdevices();
+bool sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
+{
+	Setting_Infos _setting_infos;
 
-	sleep_for(std::chrono::milliseconds(1 * 1000));
+#if 1
+	_setting_infos.deviceId = infos->deviceId;
+	_setting_infos.deviceKey = infos->deviceKey;
+	_setting_infos.MACAddress = infos->MACAddress;
 
-	GetStorageStatusOfSubdevices();
-
-	sleep_for(std::chrono::milliseconds(2 * 1000));
-
-	UpdateStorageInfos();
-
-	ThreadStartGetLatestFirmwareVersionFromURL();
-
-	GetFirmwareVersionOfSubdevices();
-
-	sleep_for(std::chrono::milliseconds(2 * 1000));
-
-	UpdateSubdeviceInfos();
+	_setting_infos.System_info.gatewayIPAddress = infos->System_info.gatewayIPAddress;
+	_setting_infos.System_info.gatewayPassword = infos->System_info.gatewayPassword;
+	_setting_infos.System_info.gatewayId = infos->System_info.gatewayId;
+	_setting_infos.System_info.https_port = infos->System_info.https_port;
+	_setting_infos.System_info.version = infos->System_info.version;
+	_setting_infos.System_info.maxChannels = infos->System_info.maxChannels;
+#else
+	memcpy(&_setting_infos, infos, sizeof(Setting_Infos));
+	memcpy(&_setting_infos.System_info, &infos->System_info, sizeof(_setting_infos.System_info));
 #endif
-	//ThreadStartForUpdateInfos(60*60);  // after 1 hour
+	printf("sunapi_manager_init() -> deviceId : %s , gatewayIPAddress : %s, MACAddress : %s\n",
+		_setting_infos.deviceId.c_str(), _setting_infos.System_info.gatewayIPAddress.c_str(), _setting_infos.MACAddress.c_str());
+	printf("sunapi_manager_init() -> version : %s , https_port : %d, maxChannels : %d\n",
+		_setting_infos.System_info.version.c_str(), _setting_infos.System_info.https_port, _setting_infos.System_info.maxChannels);
+
+
+	std::string device_id = _setting_infos.deviceId;
+	std::string	device_key = _setting_infos.deviceKey;
+
+	g_StrDeviceIP = _setting_infos.System_info.gatewayIPAddress;  // localhost -> 127.0.0.1
+
+	std::string id_pw = _setting_infos.System_info.gatewayId;
+	id_pw.append(":");
+	id_pw.append(_setting_infos.System_info.gatewayPassword);
+
+	g_StrDevicePW = id_pw;
+
+	g_Device_id = _setting_infos.deviceId;
+	g_HttpsPort = _setting_infos.System_info.https_port;
+
+	printf("sunapi_manager_init() -> g_StrDeviceIP : %s , g_StrDevicePW : %s, https port : %d\n", g_StrDeviceIP.c_str(), g_StrDevicePW.c_str(), g_HttpsPort);
+
+	// gateway init
+	g_Gateway_info_ = new GatewayInfo;
+
+	ResetGatewayInfo();
+
+	g_Gateway_info_->MACAddress = _setting_infos.MACAddress;
+	g_Gateway_info_->FirmwareVersion = _setting_infos.System_info.version;
+	g_Gateway_info_->HttpsPort = _setting_infos.System_info.https_port;
+	g_Gateway_info_->maxChannel = _setting_infos.System_info.maxChannels;
+
+	int maxChannel = g_Gateway_info_->maxChannel;
+
+	printf("[hwanjang] sunapi_manager_init() -> maxChannel : %d\n", maxChannel);
+
+	// 1. dashboard init
+	g_Storage_info_ = new Storage_Infos[maxChannel];
+	g_Worker_Storage_info_ = new Storage_Infos[maxChannel];
+
+	ResetStorageInfos();
+
+	// 2. deviceinfo init
+	g_SubDevice_info_ = new Channel_Infos[maxChannel];
+	g_Worker_SubDevice_info_ = new Channel_Infos[maxChannel];
+
+	ResetSubdeviceInfos();
+
+	// 3. firmware version
+	g_Firmware_Ver_info_ = new Firmware_Version_Infos[maxChannel];
+	g_Worker_Firmware_Ver_info_ = new Firmware_Version_Infos[maxChannel];
+
+	ResetFirmwareVersionInfos();
+
+	// Get ConnectionStatus of subdevice
+	CURLcode resCode;
+	bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
+
+	if (!result)
+	{
+		printf("failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+
+		sleep_for(std::chrono::milliseconds(1 * 2000));
+
+		result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
+		if (!result)
+		{
+			printf("failed to get GetRegiesteredCameraStatus ... 2 ... return !!\n");
+
+			if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
+			{
+				// authfail
+			}
+			else if (resCode == CURLE_OPERATION_TIMEDOUT)
+			{
+				// timeout
+			}
+			else {
+				// another error
+
+			}
+		}
+	}
+
+	bool ret = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
+
+	sleep_for(std::chrono::milliseconds(1 * 2000));
+
+	ret = GetDataForFirmwareVersionInfo();
+
+	if (!ret)
+	{
+		printf("\n ### failed to get GetDataForFirmwareVersionInfo() ... requset again !!!!!!!!!!\n");
+
+		sleep_for(std::chrono::milliseconds(1 * 1000));
+
+		ret = GetDataForFirmwareVersionInfo();
+
+		if (!ret)
+		{
+			printf("### GetFirmwareVersionOfSubdevices .. again ... failed to get GetFirmwareVersionOfSubdevices !!!!!!!!!!!!!\n ");
+		}
+
+	}
 
 	printf("[hwanjang] sunapi_manager::SunapiManagerInit() ... End ... return %d\n", result);
 
 	return result;
 }
+#endif
 
 bool sunapi_manager::GetGatewayInfo(const std::string& strGatewayIP, const std::string& strID_PW)
 {
-	/// <summary>
-	//  Get Max Channel
-	/// </summary>
 	std::string _gatewayIP = strGatewayIP;
 	std::string _idPassword = strID_PW;
 
 	int maxCh = 0;
+
+#ifndef USE_ARGV_JSON
 	maxCh = GetMaxChannelByAttribute(_gatewayIP, _idPassword);
 
 	if (maxCh < 1)
 	{
-		// ???? 
-#ifdef HWANJANG_DEBUG
-		printf("sunapi_manager::GetGatewayInfo() -> failed to GetMaxChannelByAttribute ...\n");
-#endif
-		//g_Max_Channel = DEFAULT_MAX_CHANNEL;
 		g_Gateway_info_->maxChannel = DEFAULT_MAX_CHANNEL;
 	}
+#else
+	maxCh = g_Gateway_info_->maxChannel;
+#endif
 
-	printf("sunapi_manager::GetGatewayInfo() -> Max Channel : %d\n", g_Gateway_info_->maxChannel);
+	printf("sunapi_manager::GetGatewayInfo() -> Max Channel : %d\n", maxCh);
 
 	bool result_interface = GetNetworkInterfaceOfGateway(_gatewayIP, _idPassword);
 
 	// error ??
 	if (!result_interface)
 	{
-		g_Gateway_info_->IPv4Address = g_StrDeviceIP;
-		g_Gateway_info_->MACAddress = "unknown";
+		//g_Gateway_info_->IPv4Address = g_StrDeviceIP;		
 
 #ifdef HWANJANG_DEBUG
 		printf("sunapi_manager::GetGatewayInfo() -> failed to GetNetworkInterfaceOfGateway ...\n");
@@ -297,8 +389,7 @@ bool sunapi_manager::GetGatewayInfo(const std::string& strGatewayIP, const std::
 
 	if (!result_deviceInfo)
 	{
-		g_Gateway_info_->DeviceModel = "CloudGateway";
-		g_Gateway_info_->FirmwareVersion = "unknown";
+		//g_Gateway_info_->DeviceModel = "CloudGateway";		
 
 #ifdef HWANJANG_DEBUG
 		printf("sunapi_manager::GetGatewayInfo() -> failed to GetDeviceInfoOfGateway ...\n");
@@ -375,7 +466,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 			}
 			else
 			{
-				g_Gateway_info_->WebPort = web_port;
+				g_Gateway_info_->HttpsPort = web_port;
 			}
 		}
 	}
@@ -384,8 +475,6 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 		printf("error ... initialize cURL !!!\n");
 		return false;
 	}
-#else
-	g_Gateway_info_->WebPort = g_WebPort;
 #endif
 
 	/// /////////////////////////////////////////////////////////////////////////////////////
@@ -393,30 +482,40 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 	//  - /stw-cgi/network.cgi?msubmenu=interface&action=view  -> IPv4Address , MACAddress
 	//  - /stw-cgi/system.cgi?msubmenu=deviceinfo&action=view  -> ConnectedMACAddress , FirmwareVersion
 	// 
-	// reset
-	g_Gateway_info_->curl_responseCode = CURLE_OPERATION_TIMEDOUT;
-	g_Gateway_info_->ConnectionStatus = "timeout";
 
 	request.clear();
 
+#ifndef USE_HTTPS
 	request = "http://";
 	request.append(_gatewayIP);
 	request.append("/stw-cgi/network.cgi?msubmenu=interface&action=view");
+#else  // 21.11.02 change -> https
+	request = "https://" + _gatewayIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/network.cgi?msubmenu=interface&action=view";
+#endif
 
-#if 1  // 2019.09.05 hwanjang - sunapi debugging
+#ifdef HWANJANG_DEBUG  // 2019.09.05 hwanjang - sunapi debugging
 	printf("sunapi_manager::GetNetworkInterfaceOfGateway() -> 2. SUNAPI Request : %s\n", request.c_str());
 #endif
 
 	strSUNAPIResult.clear();
 
+#if 1
 	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
+#else
+	ChunkStruct chunk_data;
+
+	chunk_data.memory = (char*)malloc(1);
+	chunk_data.size = 0;
+
+	resCode = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &chunk_data);
+
+	strSUNAPIResult = chunk_data.memory;
+#endif
 
 	g_Gateway_info_->curl_responseCode = resCode;
 
 	if (resCode == CURLE_OK)
 	{
-		g_Gateway_info_->ConnectionStatus = "on";
-
 		if (strSUNAPIResult.empty())
 		{
 			// strSUNAPIResult is empty ...
@@ -523,7 +622,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 					{
 						if (strncmp("Network1", charInterface, 7) == 0)
 						{
-							char* charMac, * charIPv4Address;
+							 char* charIPv4Address;
 
 							//  - LinkStatus(<enum> Connected, Disconnected) , InterfaceName , MACAddress
 							int ret = json_unpack(json_sub, "{s:s}", "IPv4Address", &charIPv4Address);
@@ -539,8 +638,14 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 								g_Gateway_info_->IPv4Address = charIPv4Address;								
 
 								printf("GetNetworkInterfaceOfGateway() -> strIPv4Address : %s \n", charIPv4Address);
+
+								g_Gateway_info_->ConnectionStatus.clear();
+								g_Gateway_info_->ConnectionStatus = "on";								
 							}
 
+//#ifndef USE_ARGV_JSON // not used
+#if 1
+							char* charMac;
 							ret = json_unpack(json_sub, "{s:s}", "MACAddress", &charMac);
 
 							if (ret)
@@ -550,11 +655,14 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 								printf("strSUNAPIResult : %s\n", strSUNAPIResult.c_str());
 							}
 							else
-							{								
-								g_Gateway_info_->MACAddress = charMac;
-
-								printf("GetNetworkInterfaceOfGateway() -> MACAddress : %s \n", charMac);
+							{							
+								if (g_Gateway_info_->MACAddress.empty())
+								{
+									g_Gateway_info_->MACAddress = charMac;
+									printf("GetNetworkInterfaceOfGateway() -> MACAddress is empty ... so set ... %s \n", charMac);
+								}								
 							}
+#endif
 
 							return true;
 						}
@@ -573,6 +681,8 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 	}
 	else
 	{
+		g_Gateway_info_->ConnectionStatus.clear();
+
 		std::string strError;
 		// CURL_Process fail
 		if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
@@ -587,6 +697,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 		{
 			// timeout
 			printf("[hwanjang] sunapi_manager::GetNetworkInterfaceOfGateway() -> timeout !!!\n");
+			g_Gateway_info_->ConnectionStatus = "timeout";
 		}
 		else {
 			// another error		
@@ -606,7 +717,7 @@ bool sunapi_manager::GetNetworkInterfaceOfGateway(const std::string& strGatewayI
 void sunapi_manager::ResetGatewayInfo()
 {
 	g_Gateway_info_->maxChannel = 0;
-	g_Gateway_info_->WebPort = 0;
+	g_Gateway_info_->HttpsPort = 0;
 	ResetNetworkInterfaceOfGateway();
 	ResetDeviceInfoOfGateway();
 }
@@ -642,6 +753,9 @@ void sunapi_manager::ResetStorageInfos()
 		g_Storage_info_[i].curl_responseCode = 0;
 		g_Storage_info_[i].das_status.clear();
 		g_Storage_info_[i].nas_status.clear();
+		g_Storage_info_[i].ConnectionStatus.clear();
+		g_Storage_info_[i].CheckConnectionStatus = 0;
+
 
 		// worker
 		g_Worker_Storage_info_[i].update_check = true;  // In case of check, set to true.
@@ -654,6 +768,9 @@ void sunapi_manager::ResetStorageInfos()
 		g_Worker_Storage_info_[i].curl_responseCode = 0;
 		g_Worker_Storage_info_[i].das_status.clear();
 		g_Worker_Storage_info_[i].nas_status.clear();
+		g_Worker_Storage_info_[i].ConnectionStatus.clear();
+		g_Worker_Storage_info_[i].CheckConnectionStatus = 0;
+
 	}
 }
 
@@ -670,6 +787,8 @@ void sunapi_manager::ResetStorageInfoForChannel(int channel)
 	g_Storage_info_[channel].curl_responseCode = 0;
 	g_Storage_info_[channel].das_status.clear();
 	g_Storage_info_[channel].nas_status.clear();
+	g_Storage_info_[channel].ConnectionStatus.clear();
+	g_Storage_info_[channel].CheckConnectionStatus = 0;
 
 	// worker
 	g_Worker_Storage_info_[channel].update_check = true;  // In case of check, set to true.
@@ -682,6 +801,8 @@ void sunapi_manager::ResetStorageInfoForChannel(int channel)
 	g_Worker_Storage_info_[channel].curl_responseCode = 0;
 	g_Worker_Storage_info_[channel].das_status.clear();
 	g_Worker_Storage_info_[channel].nas_status.clear();
+	g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+	g_Worker_Storage_info_[channel].CheckConnectionStatus = 0;
 }
 
 void sunapi_manager::ResetSubdeviceInfos()
@@ -699,8 +820,10 @@ void sunapi_manager::ResetSubdeviceInfos()
 		g_SubDevice_info_[i].DeviceModel.clear();
 		g_SubDevice_info_[i].DeviceName.clear();
 		g_SubDevice_info_[i].ChannelTitle.clear();
+		g_SubDevice_info_[i].Channel_FirmwareVersion.clear();
 
 		g_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
+		g_SubDevice_info_[i].NetworkInterface.CheckConnectionStatus = 0;
 		g_SubDevice_info_[i].NetworkInterface.IPv4Address.clear();
 		g_SubDevice_info_[i].NetworkInterface.LinkStatus.clear();
 		g_SubDevice_info_[i].NetworkInterface.MACAddress.clear();
@@ -716,8 +839,10 @@ void sunapi_manager::ResetSubdeviceInfos()
 		g_Worker_SubDevice_info_[i].DeviceModel.clear();
 		g_Worker_SubDevice_info_[i].DeviceName.clear();
 		g_Worker_SubDevice_info_[i].ChannelTitle.clear();
+		g_Worker_SubDevice_info_[i].Channel_FirmwareVersion.clear();
 
 		g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
+		g_Worker_SubDevice_info_[i].NetworkInterface.CheckConnectionStatus = 0;
 		g_Worker_SubDevice_info_[i].NetworkInterface.IPv4Address.clear();
 		g_Worker_SubDevice_info_[i].NetworkInterface.LinkStatus.clear();
 		g_Worker_SubDevice_info_[i].NetworkInterface.MACAddress.clear();
@@ -739,8 +864,10 @@ void sunapi_manager::ResetSubdeviceInfoForChannel(int channel)
 	g_SubDevice_info_[channel].DeviceModel.clear();
 	g_SubDevice_info_[channel].DeviceName.clear();
 	g_SubDevice_info_[channel].ChannelTitle.clear();
+	g_SubDevice_info_[channel].Channel_FirmwareVersion.clear();
 
 	g_SubDevice_info_[channel].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
+	g_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 0;
 	g_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
 	g_SubDevice_info_[channel].NetworkInterface.LinkStatus.clear();
 	g_SubDevice_info_[channel].NetworkInterface.MACAddress.clear();
@@ -756,8 +883,10 @@ void sunapi_manager::ResetSubdeviceInfoForChannel(int channel)
 	g_Worker_SubDevice_info_[channel].DeviceModel.clear();
 	g_Worker_SubDevice_info_[channel].DeviceName.clear();
 	g_Worker_SubDevice_info_[channel].ChannelTitle.clear();
+	g_Worker_SubDevice_info_[channel].Channel_FirmwareVersion.clear();
 
 	g_Worker_SubDevice_info_[channel].NetworkInterface.update_check_networkinterface = true;  // In case of check, set to true.
+	g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 0;
 	g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
 	g_Worker_SubDevice_info_[channel].NetworkInterface.LinkStatus.clear();
 	g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress.clear();
@@ -812,9 +941,11 @@ void sunapi_manager::UpdateStorageInfos()
 	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		g_Storage_info_[i].CheckConnectionStatus = g_Worker_Storage_info_[i].CheckConnectionStatus;
+
+		g_Storage_info_[i].ConnectionStatus.clear();
 		g_Storage_info_[i].ConnectionStatus = g_Worker_Storage_info_[i].ConnectionStatus;
 
-		if (g_Worker_Storage_info_[i].CheckConnectionStatus != 0)
+		if(g_Storage_info_[i].CheckConnectionStatus == 1)
 		{
 			g_Storage_info_[i].das_presence = g_Worker_Storage_info_[i].das_presence;
 			g_Storage_info_[i].nas_presence = g_Worker_Storage_info_[i].nas_presence;
@@ -822,7 +953,11 @@ void sunapi_manager::UpdateStorageInfos()
 			g_Storage_info_[i].nasfail = g_Worker_Storage_info_[i].nasfail;
 			g_Storage_info_[i].das_enable = g_Worker_Storage_info_[i].das_enable;
 			g_Storage_info_[i].nas_enable = g_Worker_Storage_info_[i].nas_enable;
+
+			g_Storage_info_[i].das_status.clear();
 			g_Storage_info_[i].das_status = g_Worker_Storage_info_[i].das_status;
+
+			g_Storage_info_[i].nas_status.clear();
 			g_Storage_info_[i].nas_status = g_Worker_Storage_info_[i].nas_status;
 		}
 	}
@@ -834,23 +969,33 @@ void sunapi_manager::UpdateSubdeviceInfos()
 
 	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
-		g_SubDevice_info_[i].CheckConnectionStatus = g_Worker_SubDevice_info_[i].CheckConnectionStatus;
+		g_SubDevice_info_[i].IsBypassSupported = g_Worker_SubDevice_info_[i].IsBypassSupported;
+		g_SubDevice_info_[i].HTTPPort = g_Worker_SubDevice_info_[i].HTTPPort;
+
+		g_SubDevice_info_[i].DeviceModel.clear();
+		g_SubDevice_info_[i].DeviceModel = g_Worker_SubDevice_info_[i].DeviceModel;
+
+		g_SubDevice_info_[i].DeviceName.clear();
+		g_SubDevice_info_[i].DeviceName = g_Worker_SubDevice_info_[i].DeviceName;
+
+		g_SubDevice_info_[i].ChannelTitle.clear();
+		g_SubDevice_info_[i].ChannelTitle = g_Worker_SubDevice_info_[i].ChannelTitle;
+
+		g_SubDevice_info_[i].Channel_FirmwareVersion.clear();
+		g_SubDevice_info_[i].Channel_FirmwareVersion = g_Worker_SubDevice_info_[i].Channel_FirmwareVersion;
+				
+		g_SubDevice_info_[i].ConnectionStatus.clear();
 		g_SubDevice_info_[i].ConnectionStatus = g_Worker_SubDevice_info_[i].ConnectionStatus;
-		if (g_Worker_SubDevice_info_[i].CheckConnectionStatus != 0)
-		{
-			g_SubDevice_info_[i].IsBypassSupported = g_Worker_SubDevice_info_[i].IsBypassSupported;
-			g_SubDevice_info_[i].HTTPPort = g_Worker_SubDevice_info_[i].HTTPPort;
+		g_SubDevice_info_[i].CheckConnectionStatus = g_Worker_SubDevice_info_[i].CheckConnectionStatus;
 
-			if(g_Worker_SubDevice_info_[i].DeviceModel.empty() != true)
-				g_SubDevice_info_[i].DeviceModel = g_Worker_SubDevice_info_[i].DeviceModel;
-
-			if(g_Worker_SubDevice_info_[i].DeviceName.empty() != true)
-				g_SubDevice_info_[i].DeviceName = g_Worker_SubDevice_info_[i].DeviceName;
-
-			if (g_Worker_SubDevice_info_[i].ChannelTitle.empty() != true)
-				g_SubDevice_info_[i].ChannelTitle = g_Worker_SubDevice_info_[i].ChannelTitle;
-			printf("UpdateSubdeviceInfos() -> index : %d , DeviceModel : %s, DeviceName : %s\n", i, g_SubDevice_info_[i].DeviceModel.c_str(), g_SubDevice_info_[i].DeviceName.c_str());
-		}
+		// update ConnectionStatus of storage info
+		g_Worker_Storage_info_[i].ConnectionStatus.clear();
+		g_Worker_Storage_info_[i].ConnectionStatus = g_Worker_SubDevice_info_[i].ConnectionStatus;
+		g_Worker_Storage_info_[i].CheckConnectionStatus = g_Worker_SubDevice_info_[i].CheckConnectionStatus;
+		
+		g_Storage_info_[i].ConnectionStatus.clear();
+		g_Storage_info_[i].ConnectionStatus = g_Worker_SubDevice_info_[i].ConnectionStatus;
+		g_Storage_info_[i].CheckConnectionStatus = g_Worker_SubDevice_info_[i].CheckConnectionStatus;
 	}
 }
 
@@ -860,16 +1005,18 @@ void sunapi_manager::UpdateSubdeviceNetworkInterfaceInfos()
 
 	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
+		g_SubDevice_info_[i].NetworkInterface.ConnectionStatus.clear();
 		g_SubDevice_info_[i].NetworkInterface.ConnectionStatus = g_Worker_SubDevice_info_[i].NetworkInterface.ConnectionStatus;
+		g_SubDevice_info_[i].NetworkInterface.CheckConnectionStatus = g_Worker_SubDevice_info_[i].NetworkInterface.CheckConnectionStatus;
 
-		if (g_Worker_SubDevice_info_[i].CheckConnectionStatus != 0)
-		{
-			g_SubDevice_info_[i].NetworkInterface.IPv4Address = g_Worker_SubDevice_info_[i].NetworkInterface.IPv4Address;
-			g_SubDevice_info_[i].NetworkInterface.LinkStatus = g_Worker_SubDevice_info_[i].NetworkInterface.LinkStatus;
+		g_SubDevice_info_[i].NetworkInterface.IPv4Address.clear();
+		g_SubDevice_info_[i].NetworkInterface.IPv4Address = g_Worker_SubDevice_info_[i].NetworkInterface.IPv4Address;
 
-			if(g_Worker_SubDevice_info_[i].NetworkInterface.MACAddress.empty() != true)
-				g_SubDevice_info_[i].NetworkInterface.MACAddress = g_Worker_SubDevice_info_[i].NetworkInterface.MACAddress;			
-		}
+		g_SubDevice_info_[i].NetworkInterface.LinkStatus.clear();
+		g_SubDevice_info_[i].NetworkInterface.LinkStatus = g_Worker_SubDevice_info_[i].NetworkInterface.LinkStatus;
+
+		g_SubDevice_info_[i].NetworkInterface.MACAddress.clear();
+		g_SubDevice_info_[i].NetworkInterface.MACAddress = g_Worker_SubDevice_info_[i].NetworkInterface.MACAddress;
 	}
 }
 
@@ -878,16 +1025,16 @@ void sunapi_manager::UpdateFirmwareVersionInfos()
 	// firmware version info
 	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
-		if (g_Worker_SubDevice_info_[i].CheckConnectionStatus != 0)
+		if (g_SubDevice_info_[i].CheckConnectionStatus == 1)
 		{
-			if(g_Worker_Firmware_Ver_info_[i].FirmwareVersion.empty() != true)
-				g_Firmware_Ver_info_[i].FirmwareVersion = g_Worker_Firmware_Ver_info_[i].FirmwareVersion;
+			g_Firmware_Ver_info_[i].FirmwareVersion.clear();
+			g_Firmware_Ver_info_[i].FirmwareVersion = g_Worker_Firmware_Ver_info_[i].FirmwareVersion;
 
-			if(g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.empty() != true)
-				g_Firmware_Ver_info_[i].LatestFirmwareVersion = g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion;
+			g_Firmware_Ver_info_[i].LatestFirmwareVersion.clear();
+			g_Firmware_Ver_info_[i].LatestFirmwareVersion = g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion;
 
-			if(g_Worker_Firmware_Ver_info_[i].UpgradeStatus.empty() != true)
-				g_Firmware_Ver_info_[i].UpgradeStatus = g_Worker_Firmware_Ver_info_[i].UpgradeStatus;
+			g_Firmware_Ver_info_[i].UpgradeStatus.clear();
+			g_Firmware_Ver_info_[i].UpgradeStatus = g_Worker_Firmware_Ver_info_[i].UpgradeStatus;
 		}
 	}
 }
@@ -895,9 +1042,9 @@ void sunapi_manager::UpdateFirmwareVersionInfos()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // for temp
+#if 0
 int sunapi_manager::GetDeviceIP_PW(std::string* strIP , std::string* strPW)
-{
-	// TODO: 여기에 구현 코드 추가.
+{	
 	bool result = false;
 
 	std::string sunapi_info_file = "config/camera.cfg";
@@ -930,6 +1077,7 @@ int sunapi_manager::GetDeviceIP_PW(std::string* strIP , std::string* strPW)
 
 	return result;
 }
+#endif
 
 size_t sunapi_manager::WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
@@ -963,8 +1111,14 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, std::string 
 CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
 #endif
 {
+	std::string strCURLResult;
+
 	time_t startTimeOfCURL_Process = time(NULL);
-	std::cout << "sunapi_manager::CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCURL_Process << std::endl;
+	//std::cout << "sunapi_manager::CURL_Process() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCURL_Process << std::endl;
+
+#if 1  // 2019.09.05 hwanjang - sunapi debugging
+	printf("sunapi_manager::CURL_Process() -> Start ... timeout : %d, time : %lld , request : %s , \n", timeout, startTimeOfCURL_Process, strRequset.c_str());
+#endif
 
 	ChunkStruct chunk;
 
@@ -976,10 +1130,6 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl_handle = curl_easy_init();
-
-#if 1  // 2019.09.05 hwanjang - sunapi debugging
-	printf("sunapi_manager::curl_process() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
-#endif
 
 	if (curl_handle)
 	{
@@ -1002,7 +1152,7 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 
 		if (ssl_opt)
 		{
-			std::string ca_path = "config/ca-certificates.crt";
+			std::string ca_path = CA_FILE_PATH;
 			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
 			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 		}
@@ -1040,9 +1190,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			if((long)chunk.size != 0) // 200 ok , 301 moved , 404 error
 			{		
 				// OK
-				*strResult = chunk.memory;
-
-				printf("sunapi_manager::CURL_Process() -> strResult : \n%s\n", chunk.memory);
+				//strCURLResult = chunk.memory;
+				*strResult = chunk.memory;				
+				
+				printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequset.c_str(), strResult->c_str());
 			}
 		}
 		curl_easy_cleanup(curl_handle);
@@ -1052,20 +1203,160 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		printf("error ... initialize cURL !!!\n");
 		res = CURLE_FAILED_INIT;
 	}
-	free(chunk.memory);
+
+	//memcpy(&strResult, chunk.memory, chunk.size);
+		
+	if(chunk.memory)
+		free(chunk.memory);
 
 	/* we're done with libcurl, so clean it up */
-	curl_global_cleanup();	
+	curl_global_cleanup();		
 
 	time_t endTimeOfCURL_Process = time(NULL);
-	std::cout << "sunapi_manager::CURL_Process() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCURL_Process << " -> " <<
+
+#if 1  // 2019.09.05 hwanjang - sunapi debugging
+	printf("sunapi_manager::CURL_Process() -> End ... endTime : %lld , , diff : %lld, request : %s , \n", 
+		endTimeOfCURL_Process, (endTimeOfCURL_Process - startTimeOfCURL_Process), strRequset.c_str());
+#else
+	std::cout << "sunapi_manager::CURL_Process() -> End ... time : " << (long int)endTimeOfCURL_Process << " -> " <<
+		(long int)(endTimeOfCURL_Process - startTimeOfCURL_Process) << ", request : " << strRequset.c_str() << std::endl;
+#endif
+
+	return res;
+}
+
+CURLcode sunapi_manager::curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, void* chunk_data)
+{
+	std::string strCURLResult;
+
+	time_t startTimeOfCURL_Process = time(NULL);
+	std::cout << "sunapi_manager::curlProcess() -> timeout : " << timeout << ", Start ... time : " << (long int)startTimeOfCURL_Process << std::endl;
+
+	ChunkStruct chunk;
+
+	chunk.memory = (char*)malloc(1);  /* will be grown as needed by the realloc above */
+	chunk.size = 0;    /* no data at this point */
+
+	CURL* curl_handle;
+	CURLcode res;
+
+	curl_global_init(CURL_GLOBAL_ALL);
+	curl_handle = curl_easy_init();
+
+#if 1  // 2019.09.05 hwanjang - sunapi debugging
+	printf("sunapi_manager::curlProcess() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
+#endif
+
+	if (curl_handle)
+	{
+#if 1
+		struct curl_slist* headers = NULL;
+		//headers = curl_slist_append(headers, "cache-control:no-cache");
+		if (json_mode)
+			headers = curl_slist_append(headers, "Accept: application/json");
+		else
+			headers = curl_slist_append(headers, "Accept: application/text");
+
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+#endif
+
+		curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
+		curl_easy_setopt(curl_handle, CURLOPT_URL, strRequset.c_str());
+		//curl_easy_setopt(curl_handle, CURLOPT_PORT, 80L);
+		curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
+		curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
+
+		if (ssl_opt)
+		{
+			std::string ca_path = CA_FILE_PATH;
+			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+		}
+		else
+		{
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+		}
+
+		/* send all data to this function  */
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+
+		/* we pass our 'chunk' struct to the callback function */
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
+		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+		curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, timeout);
+		curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
+		//curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
+
+		res = curl_easy_perform(curl_handle);
+		/* check for errors */
+		if (res != CURLE_OK)
+		{
+			printf("sunapi_manager::curlProcess() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
+		}
+		else
+		{
+			/*
+			* Now, our chunk.memory points to a memory block that is chunk.size
+			* bytes big and contains the remote file.
+			*/
+			long response_code;
+			curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
+			//printf("response code : %d\n", res);
+			if ((long)chunk.size != 0) // 200 ok , 301 moved , 404 error
+			{
+				// OK
+				strCURLResult = chunk.memory;
+				//*strResult = chunk.memory;			
+
+				printf("sunapi_manager::curlProcess() -> request : %s\n strResult : \n%s\n", strRequset.c_str(), strCURLResult.c_str());
+			
+			}
+		}
+		curl_easy_cleanup(curl_handle);
+	}
+	else
+	{
+		printf("error ... initialize cURL !!!\n");
+		res = CURLE_FAILED_INIT;
+	}
+	
+	if (chunk.size > 0)
+	{
+		ChunkStruct* mem = (ChunkStruct*)chunk_data;
+		mem->memory = (char*)realloc(mem->memory, mem->size + (long)chunk.size + 1);
+
+		if (mem->memory != NULL)
+		{
+			memcpy(&(mem->memory[mem->size]), chunk.memory, (long)chunk.size);
+			mem->size += chunk.size;
+			mem->memory[mem->size] = 0;
+		}
+		else
+		{
+			/* out of memory! */
+			printf("sunapi_manager::curlProcess() -> not enough memory (realloc returned NULL)\n");
+			return CURLE_CHUNK_FAILED;
+		}
+	}
+
+	if (chunk.memory)
+		free(chunk.memory);
+
+	/* we're done with libcurl, so clean it up */
+	curl_global_cleanup();
+
+	time_t endTimeOfCURL_Process = time(NULL);
+	std::cout << "sunapi_manager::curlProcess() -> timeout : " << timeout << ", End ... time : " << (long int)endTimeOfCURL_Process << " -> " <<
 		(long int)(endTimeOfCURL_Process - startTimeOfCURL_Process) << std::endl;
 
 	return res;
 }
 
+
 bool sunapi_manager::ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode)
 {
+#if 0 // 2021.11.05 hwanjang - check IsBypassSupported ?????????
 	if (g_SubDevice_info_[channel].IsBypassSupported != true)
 	{
 		printf("sunapi_manager::ByPassSUNAPI() -> channel : %d, IsBypassSupported ... false --> return !!!\n", channel);
@@ -1074,17 +1365,20 @@ bool sunapi_manager::ByPassSUNAPI(int channel, bool json_mode, const std::string
 
 		return false;
 	}
-
-	// TODO: 여기에 구현 코드 추가.
+#endif
 
 	std::string request;
 
+#ifndef USE_HTTPS
 	request = "http://";
 	request.append(IPAddress);
 	request.append("/stw-cgi/bypass.cgi?msubmenu=bypass&action=control&Channel=");
 	request.append(std::to_string(channel));
 	request.append("&BypassURI=");
 	request.append(bypassURI);
+#else // 21.11.02 change -> https
+	request = "https://" + IPAddress + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/bypass.cgi?msubmenu=bypass&action=control&Channel=" + std::to_string(channel) + "&BypassURI=" + bypassURI;
+#endif
 
 	//printf("private ID:PW = %s\n",userpw.c_str());
 
@@ -1094,7 +1388,19 @@ bool sunapi_manager::ByPassSUNAPI(int channel, bool json_mode, const std::string
 
 	CURLcode res;
 	std::string strSUNAPIResult;
+
+#if 1
 	res = CURL_Process(json_mode, false, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
+#else
+	ChunkStruct chunk_data;
+
+	chunk_data.memory = (char*)malloc(1);
+	chunk_data.size = 0;
+
+	res = curlProcess(json_mode, false, CURL_TIMEOUT, request, devicePW, &chunk_data);
+
+	strSUNAPIResult = chunk_data.memory;
+#endif
 
 	*resCode = res;
 
@@ -1134,10 +1440,14 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strGatewayIP, std::stri
 
 	std::string request;
 
+#ifndef USE_HTTPS
 	request = "http://";
 	request.append(_gatewayIP);
 	//request.append("/stw-cgi/attributes.cgi/attributes/system/limit/MaxChannel");
 	request.append("/stw-cgi/attributes.cgi");
+#else // 21.11.02 change -> https
+	request = "https://" + _gatewayIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/attributes.cgi";
+#endif
 
 	//printf("private ID:PW = %s\n",userpw.c_str());
 
@@ -1146,11 +1456,24 @@ int sunapi_manager::GetMaxChannelByAttribute(std::string strGatewayIP, std::stri
 #endif
 
 	CURLcode res;
-	std::string strSUNAPIResult;
 	bool json_mode = true;
 	bool ssl_opt = false;
 
+	std::string strSUNAPIResult;
+	
+#if 1
 	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
+#else
+	ChunkStruct chunk_data;
+
+	chunk_data.memory = (char*)malloc(1);
+	chunk_data.size = 0;	
+
+	res = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &chunk_data);
+
+	strSUNAPIResult = chunk_data.memory;
+#endif
+
 
 	if (res == CURLE_OK)
 	{
@@ -1218,10 +1541,13 @@ int sunapi_manager::GetConnectionCount()
 bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, const std::string devicePW, CURLcode* resCode)
 {
 	time_t update_time = time(NULL);
+	
+	int skip_time = 1;
 
-	if ((update_time - g_UpdateTimeOfRegistered) > GET_WAIT_TIMEOUT)
+	if ((update_time - g_UpdateTimeOfRegistered) > skip_time)
 	{
-		g_UpdateTimeOfRegistered = time(NULL);
+		g_CheckUpdateOfRegistered = false;
+		g_UpdateTimeOfRegistered = update_time;
 
 		std::cout << "GetRegiesteredCameraStatus() -> Start ... time : " << (long int)g_UpdateTimeOfRegistered << std::endl;
 
@@ -1230,22 +1556,39 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 
 		std::string request;
 
+#ifndef USE_HTTPS
 		request = "http://";
 		request.append(deviceIP);
 		request.append("/stw-cgi/media.cgi?msubmenu=cameraregister&action=view");
 
 		//printf("private ID:PW = %s\n",userpw.c_str());
+#else  // 21.11.02 change -> https
+		request = "https://" + deviceIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/media.cgi?msubmenu=cameraregister&action=view";
+#endif
 
-#if 1  // 2019.09.05 hwanjang - sunapi debugging
+
+#if 0  // 2019.09.05 hwanjang - sunapi debugging
 		printf("sunapi_manager::GetRegiesteredCameraStatus() -> SUNAPI Request : %s\n", request.c_str());
 #endif
 
 		CURLcode res;
 		std::string strSUNAPIResult;
+
 		bool json_mode = true;
 		bool ssl_opt = false;
 
+#if 1
 		res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
+#else
+		ChunkStruct chunk_data;
+
+		chunk_data.memory = (char*)malloc(1);
+		chunk_data.size = 0;
+
+		res = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, devicePW, &chunk_data);
+
+		strSUNAPIResult = chunk_data.memory;
+#endif
 
 		*resCode = res;
 
@@ -1258,6 +1601,9 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 			if (strSUNAPIResult.empty())
 			{
 				printf("[hwanjang] GetRegiesteredCameraStatus() result string is empty !!!\n");
+
+				g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
+
 				return false;
 			}
 
@@ -1273,6 +1619,8 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 
 				printf("strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
 
+				g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
+
 				return false;
 			}
 
@@ -1281,6 +1629,9 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 			if (!json_is_array(json_array))
 			{
 				printf("NG1 ... GetRegiesteredCameraStatus() -> json_is_array fail !!!\n");
+
+				g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
+
 				return false;
 			}
 
@@ -1303,13 +1654,18 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 				}
 				else
 				{
+#if 0 // for debug
+					printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , charStatus : %s , strlen : %d\n", 
+						index, charStatus, strlen(charStatus));
+#endif
+					g_Worker_SubDevice_info_[index].ConnectionStatus.clear();
+
 					if (strncmp("Success", charStatus, 7) == 0)
 					{
 						g_ConnectionCnt++;
 						g_RegisteredCameraCnt++;
 
 						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 1;  // Success -> Connect
-
 						g_Worker_SubDevice_info_[index].ConnectionStatus = "on";
 
 						printf("GetRegiesteredCameraStatus() -> channel : %d , connect ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
@@ -1319,7 +1675,6 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						g_RegisteredCameraCnt++;
 
 						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 2;  // ConnectFail
-
 						g_Worker_SubDevice_info_[index].ConnectionStatus = "fail";
 
 						printf("GetRegiesteredCameraStatus() -> channel : %d , ConnectFail ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
@@ -1329,10 +1684,9 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						g_RegisteredCameraCnt++;
 
 						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 4;  // AuthFail
-
 						g_Worker_SubDevice_info_[index].ConnectionStatus = "authError";
 
-						printf("GetRegiesteredCameraStatus() -> channel : %d , ConnectFail ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
+						printf("GetRegiesteredCameraStatus() -> channel : %d , AuthFail ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
 
 					}
 					else if (strncmp("MaxUserLimit", charStatus, 12) == 0)
@@ -1340,24 +1694,85 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						g_RegisteredCameraCnt++;
 
 						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 3;  // timeout
-
 						g_Worker_SubDevice_info_[index].ConnectionStatus = "timeout";
 
-						printf("GetRegiesteredCameraStatus() -> channel : %d , ConnectFail ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
+						printf("GetRegiesteredCameraStatus() -> channel : %d , MaxUserLimit ... timeout ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
 
 					}
-					else
+					else if (strncmp("Unknown", charStatus, 7) == 0)
 					{
+						g_RegisteredCameraCnt++;
+
+						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;  // unknown
+						g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+
+						printf("GetRegiesteredCameraStatus() -> channel : %d , unknown ... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
+					}
+					else if (strncmp("Disconnected", charStatus, 12) == 0)
+					{
+						// Disconnected
+
 						//printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , disconnected ... \n", index);
 
 						// reset channel
+#if 0
 						ResetStorageInfoForChannel(index);
 						ResetSubdeviceInfoForChannel(index);
 						ResetFirmwareVersionInfoForChannel(index);
+#else
+						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 0;  // Disconnected
+						g_Worker_SubDevice_info_[index].ConnectionStatus = "Disconnected";
+#endif
 
 					}
+					else if(strlen(charStatus) == 0)
+					{
+						// ?????
 
-					if (g_Worker_SubDevice_info_[index].CheckConnectionStatus != 0)  // Success , ConnectFail , timeout , AuthFail
+						printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status is empty ????????????????\n", index);
+
+						result = json_unpack(obj, "{s:s}", "IPAddress", &charIPAddress);
+						if (result)
+						{
+							printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status & IPAddress is empty ??? unknown @@@@@@@\n", index);
+							// reset channel
+#if 0
+							ResetStorageInfoForChannel(index);
+							ResetSubdeviceInfoForChannel(index);
+							ResetFirmwareVersionInfoForChannel(index);
+#else
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;
+							g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+#endif
+						}
+						else
+						{
+							g_RegisteredCameraCnt++;
+
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;  
+							g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+
+							printf("GetRegiesteredCameraStatus() -> channel : %d , Connect status ???? ... unknown... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
+						}
+					}
+					else
+					{
+						// ?????
+
+						printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status : %s ?????? unknown @@@@@@@\n", index, charStatus);
+
+						// reset channel
+#if 0
+						ResetStorageInfoForChannel(index);
+						ResetSubdeviceInfoForChannel(index);
+						ResetFirmwareVersionInfoForChannel(index);
+#else
+						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;
+						g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+#endif
+					}
+
+					if (g_Worker_SubDevice_info_[index].CheckConnectionStatus != 0)  // 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 					{
 						webPort = -1;
 						result = json_unpack(obj, "{s:s, s:s, s:s, s:i, s:b}", "Model", &charModel, "Title", &charTitle, "IPAddress", &charIPAddress, "HTTPPort", &webPort, "IsBypassSupported", &IsBypassSupported);
@@ -1374,6 +1789,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address.clear();
 								g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address = charIPAddress;
 							}
 
@@ -1396,6 +1812,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[index].DeviceModel.clear();
 								g_Worker_SubDevice_info_[index].DeviceModel = charModel;
 							}
 
@@ -1418,16 +1835,28 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[index].ChannelTitle.clear();
 								g_Worker_SubDevice_info_[index].ChannelTitle = charTitle;
 							}
 						}
 						else
 						{
-							g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address = charIPAddress;
-							g_Worker_SubDevice_info_[index].ChannelTitle = charTitle;
-							g_Worker_SubDevice_info_[index].HTTPPort = webPort;
+							// Model
+							g_Worker_SubDevice_info_[index].DeviceModel.clear();
 							g_Worker_SubDevice_info_[index].DeviceModel = charModel;
-							g_Worker_SubDevice_info_[index].IsBypassSupported = IsBypassSupported;
+
+							// Title - channel name
+							g_Worker_SubDevice_info_[index].ChannelTitle.clear();
+							g_Worker_SubDevice_info_[index].ChannelTitle = charTitle;
+
+							// IPAddress
+							g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address.clear();
+							g_Worker_SubDevice_info_[index].NetworkInterface.IPv4Address = charIPAddress;
+
+							// HTTPPort
+							g_Worker_SubDevice_info_[index].HTTPPort = webPort;		
+							// IsBypassSupported
+							g_Worker_SubDevice_info_[index].IsBypassSupported = IsBypassSupported;							
 						}
 					}
 				}
@@ -1441,6 +1870,12 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 			std::cout << "GetRegiesteredCameraStatus() -> End ... time : " << (long int)end_time << " , diff : "
 				<< (long int)(end_time - g_UpdateTimeOfRegistered) << std::endl;
 
+			g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
+
+#if 0
+			if (chunk_data.memory)
+				free(chunk_data.memory);
+#endif
 			return false;
 		}
 
@@ -1448,13 +1883,43 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 		UpdateSubdeviceNetworkInterfaceInfos();
 
 		time_t end_time = time(NULL);
-		printf("GetRegiesteredCameraStatus() -> End ... g_ConnectionCnt : %d , time : %ld , diff : %ld\n",
-			g_ConnectionCnt, (long int)end_time, (long int)(end_time - g_UpdateTimeOfRegistered));
+		printf("GetRegiesteredCameraStatus() -> End ... g_RegisteredCameraCnt : %d , g_ConnectionCnt : %d , time : %ld , diff : %ld\n",
+			g_RegisteredCameraCnt, g_ConnectionCnt, (long int)end_time, (long int)(end_time - g_UpdateTimeOfRegistered));
+
+		g_CheckUpdateOfRegistered = true;
+#if 0
+		if (chunk_data.memory)
+			free(chunk_data.memory);
+#endif
 	}
 	else
 	{
 		printf("GetRegiesteredCameraStatus() -> check %ld ... Skip !!!!!\n", (long int)(update_time - g_UpdateTimeOfRegistered));
+		int check_count = 0;
+		while (1)
+		{
+			sleep_for(std::chrono::milliseconds(200));
+
+			check_count++;
+
+			if (g_CheckUpdateOfRegistered == true)
+			{
+				printf("GetRegiesteredCameraStatus() -> g_CheckUpdateOfRegistered .. true ... check_count : %d !!!!!\n", check_count);
+
+				break;
+			}
+			else
+			{
+				if (check_count > 15)
+				{
+					printf("GetRegiesteredCameraStatus() -> g_CheckUpdateOfRegistered ... false ... check_count : %d !!!!!\n", check_count);
+
+					break;
+				}
+			}
+		}
 	}
+	
 	return true;
 }
 
@@ -1484,12 +1949,17 @@ void sunapi_manager::GetDataForDashboardAPI(const std::string& strTopic, const s
 	else
 	{
 		// Get ConnectionStatus of subdevice
+
+		printf("GetDataForDashboardAPI() -> received charCommand : %s ... \n", charCommand);
+
 		CURLcode resCode;
 		bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 
 		if (!result)
 		{
 			printf("failed to get GetRegiesteredCameraStatus ... 1");
+
+			sleep_for(std::chrono::milliseconds(500));
 
 			result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 			if (!result)
@@ -1550,23 +2020,13 @@ void sunapi_manager::GetDataForDashboardAPI(const std::string& strTopic, const s
 // 1. interface for dashboard - storage
 void sunapi_manager::GetDashboardView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetDashboardView() -> Max Channel : %d ... Dashboard Info ...\n", g_Gateway_info_->maxChannel);
+	g_StartTimeOfStorageStatus = time(NULL);
 
-	time_t update_time = time(NULL);
+	printf("GetDashboardView() -> Start ... Dashboard Info ... start time : %lld\n", g_StartTimeOfStorageStatus);
 
-	if ((update_time - g_UpdateTimeOfStorageStatus) > GET_WAIT_TIMEOUT)
-	{
-		GetStorageStatusOfSubdevices();
+	GetStorageStatusOfSubdevices();
 
-		sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
-	}
-	else
-	{
-		printf("check %ld ... Skip !!!!!\n", (long int)(update_time - g_UpdateTimeOfStorageStatus));
-
-		// skip to check
-		Set_update_checkForStorageInfo();
-	}
+	sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
 
 	char* strCommand, * strType, * strView, * strTid;
 	int result = json_unpack(json_strRoot, "{s:s, s:s, s:s, s:s}", "command", &strCommand, "type", &strType, "view", &strView, "tid", &strTid);
@@ -1585,16 +2045,13 @@ void sunapi_manager::GetDashboardView(const std::string& strTopic, json_t* json_
 // 2. interface for deviceinfo
 void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetDeviceInfoView() -> Max Channel : %d ... Device Info ...\n", g_Gateway_info_->maxChannel);
+	g_StartTimeOfDeviceInfo = time(NULL);
 
-#if 0
-	GetDataForSubdeviceInfo();
-
-	sleep_for(std::chrono::milliseconds(1 * 100));
-#else
+	printf("GetDeviceInfoView() -> Start ... Device Info ... start time : %lld\n", g_StartTimeOfDeviceInfo);
 
 	// update gateway info
-	if((g_Gateway_info_->MACAddress == "unknown") || g_Gateway_info_->MACAddress.empty())
+	if((g_Gateway_info_->MACAddress == "unknown") || g_Gateway_info_->MACAddress.empty()
+		|| g_Gateway_info_->IPv4Address.empty())
 	{
 		bool ret = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
 
@@ -1608,13 +2065,7 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 	// add Device Name
 	GetDeviceInfoOfSubdevices();
 
-	//sleep_for(std::chrono::milliseconds(10));
-
-	//GetMacAddressOfSubdevices();
-
 	sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
-
-#endif	
 
 	char* strCommand, * strType, * strView, * strTid;
 	bool result = json_unpack(json_strRoot, "{s:s, s:s, s:s, s:s}", "command", &strCommand, "type", &strType, "view", &strView, "tid", &strTid);
@@ -1634,23 +2085,13 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 // 3. interface for firmware version info
 void sunapi_manager::GetFirmwareVersionInfoView(const std::string& strTopic, json_t* json_strRoot)
 {
-	printf("GetFirmwareVersionInfoView() -> Max Channel : %d ... Firmware Version Info ...\n", g_Gateway_info_->maxChannel);
+	g_StartTimeForFirmwareVersionView = time(NULL);
 
-	time_t update_time = time(NULL);
+	printf("GetFirmwareVersionInfoView() -> Start ... Firmware Version Info ... time : %lld\n", g_StartTimeForFirmwareVersionView);
 
-	if ((update_time - g_UpdateTimeForFirmwareVersionOfSubdevices) > GET_WAIT_TIMEOUT)
-	{
-		GetDataForFirmwareVersionInfo();
+	bool ret = GetDataForFirmwareVersionInfo();
 
-		sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
-	}
-	else
-	{
-		printf("check %ld ... Skip !!!!!\n", (long int)(update_time - g_UpdateTimeForFirmwareVersionOfSubdevices));
-
-		// skip to check
-		Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
-	}
+	sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
 
 	char* strCommand, * strType, * strView, * strTid;
 	int result = json_unpack(json_strRoot, "{s:s, s:s, s:s, s:s}", "command", &strCommand, "type", &strType, "view", &strView, "tid", &strTid);
@@ -1733,11 +2174,15 @@ void sunapi_manager::UpdateFirmwareOfSubdevice(const std::string& strTopic, json
 		// Send to gateway
 		std::string request;
 
+#ifndef USE_HTTPS
 		request = "http://";
 		request.append(g_StrDeviceIP);
 
 		request.append("/stw-cgi/media.cgi?msubmenu=cameraupgrade&action=set&Mode=Start&ChannelIDList=");
 		request.append(strUpdateChannel);
+#else // 21.11.02 change -> https
+		request = "https://" + g_StrDeviceIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/media.cgi?msubmenu=cameraupgrade&action=set&Mode=Start&ChannelIDList=" + strUpdateChannel;
+#endif
 
 		//printf("private ID:PW = %s\n",userpw.c_str());
 
@@ -1752,7 +2197,18 @@ void sunapi_manager::UpdateFirmwareOfSubdevice(const std::string& strTopic, json
 		bool json_mode = true;
 		bool ssl_opt = false;
 
+#if 1
 		res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, g_StrDevicePW, &strSUNAPIResult);
+#else
+		ChunkStruct chunk_data;
+
+		chunk_data.memory = (char*)malloc(1);
+		chunk_data.size = 0;
+
+		res = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, g_StrDevicePW, &chunk_data);
+
+		strSUNAPIResult = chunk_data.memory;
+#endif
 
 		if (res == CURLE_OK)
 		{
@@ -1912,32 +2368,6 @@ void sunapi_manager::GetNASPresenceOfSubdevice(int channel, const std::string de
 	}
 }
 
-void sunapi_manager::GetStoragePresenceOfSubdevices()
-{	
-#if 0  // not use
-	g_UpdateTimeOfStorageStatus = time(NULL);
-
-	int maxChannel = g_Gateway_info_->maxChannel;
-
-	std::string deviceIP = g_StrDeviceIP;
-	std::string devicePW = g_StrDevicePW;
-
-	// for test
-	//max_ch = 10; 
-
-	for (int i = 0; i < maxChannel; i++)
-	{
-		//sleep_for(std::chrono::milliseconds(10));
-
-		printf("GetStoragePresenceOfSubdevices() -> index : %d ...\n", i);
-		
-		ThreadStartForStoragePresence(i, deviceIP, devicePW);
-
-		sleep_for(std::chrono::milliseconds(10));
-	}
-#endif
-}
-
 int sunapi_manager::ThreadStartForStoragePresence(int channel, const std::string deviceIP, const std::string devicePW)
 {
 	std::thread thread_function([=] { thread_function_for_storage_presence(channel, deviceIP, devicePW); });
@@ -2048,12 +2478,6 @@ void sunapi_manager::thread_function_for_storage_presence(int channel, const std
 
 void sunapi_manager::GetStorageStatusOfSubdevices()
 {
-	// TODO: 여기에 구현 코드 추가.
-
-	g_UpdateTimeOfStorageStatus = time(NULL);
-
-	std::cout << "GetStorageStatusOfSubdevices() -> Start ... g_UpdateTimeOfStorageStatus : " << g_UpdateTimeOfStorageStatus << std::endl;
-
 	int maxChannel = g_Gateway_info_->maxChannel;
 
 	std::string deviceIP = g_StrDeviceIP;
@@ -2063,8 +2487,10 @@ void sunapi_manager::GetStorageStatusOfSubdevices()
 	{
 		//sleep_for(std::chrono::milliseconds(10));
 #if 1
-		if ( (g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-			|| (g_SubDevice_info_[i].CheckConnectionStatus == 3) ) // timeout
+		if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)		// Success 
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)	// timeout
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 4)	// authError
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 5) )  // unknown
 		{
 			ThreadStartForStorageStatus(i, deviceIP, devicePW);
 			
@@ -2094,167 +2520,206 @@ int sunapi_manager::ThreadStartForStorageStatus(int channel, const std::string d
 
 void sunapi_manager::thread_function_for_storage_status(int channel, const std::string deviceIP, const std::string devicePW)
 {
-	printf("thread_function_for_storage_status() -> channel : %d , Start to get storageinfo ...\n", channel);
+	//printf("thread_function_for_storage_status() -> channel : %d , Start to get storageinfo ...\n", channel);
+	time_t update_time = time(NULL);
+	time_t check_time = update_time - g_Worker_Storage_info_[channel].storage_update_time;
 
-	g_Worker_Storage_info_[channel].update_check = false;
+	if (check_time > GET_WAIT_TIMEOUT)
+	{
+		g_Worker_Storage_info_[channel].update_check = false;
+		g_Worker_Storage_info_[channel].storage_update_time = time(NULL);
 
-	// reset timeout
-	g_Worker_Storage_info_[channel].curl_responseCode = CURLE_OPERATION_TIMEDOUT;
-	g_Worker_Storage_info_[channel].ConnectionStatus = "timeout";
+		bool result = false;
 
-	bool result = false;
-
-	std::string strByPassResult;
+		std::string strByPassResult;
 
 #if 1  // ByPass - Cloud Gateway
-	std::string strByPassURI = "/stw-cgi/system.cgi?msubmenu=storageinfo&action=view";
+		std::string strByPassURI = "/stw-cgi/system.cgi?msubmenu=storageinfo&action=view";
 
-	bool json_mode = true;
-	CURLcode resCode;
-	result = ByPassSUNAPI(channel, json_mode, deviceIP, devicePW, strByPassURI, &strByPassResult, &resCode);
+		bool json_mode = true;
+		CURLcode resCode;
+		result = ByPassSUNAPI(channel, json_mode, deviceIP, devicePW, strByPassURI, &strByPassResult, &resCode);
 #else  // to each camera
-	std::string request;
-	std::string ipAddress = g_SubDevice_info_[channel].IPv4Address;
-	int port = g_SubDevice_info_[channel].HTTPPort;
+		std::string request;
+		std::string ipAddress = g_SubDevice_info_[channel].IPv4Address;
+		int port = g_SubDevice_info_[channel].HTTPPort;
 
-	request = "http://";
-	request.append(ipAddress);
-	request.append(":");
-	request.append(std::to_string(port));
-	request.append("/stw-cgi/system.cgi?msubmenu=storageinfo&action=view");
+		request = "http://";
+		request.append(ipAddress);
+		request.append(":");
+		request.append(std::to_string(port));
+		request.append("/stw-cgi/system.cgi?msubmenu=storageinfo&action=view");
 
-	bool json_mode = true;
-	CURLcode res;
-	std::string strSUNAPIResult;
-	res = CURL_Process(json_mode, false, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
+		bool json_mode = true;
+		CURLcode res;
+		std::string strSUNAPIResult;
+		res = CURL_Process(json_mode, false, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
 #endif
 
-	g_Worker_Storage_info_[channel].curl_responseCode = resCode;
+		g_Worker_Storage_info_[channel].curl_responseCode = resCode;
 
-	if (result)
-	{
-		g_Worker_Storage_info_[channel].ConnectionStatus = "on";
-
-		// 
-		if (strByPassResult.empty())
+		if (result)
 		{
-			// fail
-			printf("channel : %d, strByPassResult is empty !!! \n", channel);
-
-			// DAS			
-			g_Worker_Storage_info_[channel].das_status = "unknown";
-			// NAS			
-			g_Worker_Storage_info_[channel].nas_status = "unknown";
-		}
-		else
-		{
-			json_error_t error_check;
-			json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);
-
-			if (!json_strRoot)
+			// 
+			if (strByPassResult.empty())
 			{
-				fprintf(stderr, "error : root\n");
-				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
+				// fail
+				printf("channel : %d, strByPassResult is empty !!! \n", channel);
 
-				printf("strByPassResult : %s\n", strByPassResult.c_str());
-
-				// DAS			
-				g_Worker_Storage_info_[channel].das_status = "unknown";
-				// NAS			
-				g_Worker_Storage_info_[channel].nas_status = "unknown";
+				g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 			}
 			else
 			{
-				json_t* json_array = json_object_get(json_strRoot, "Storages");
+				json_error_t error_check;
+				json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);
 
-				if (!json_array)
+				if (!json_strRoot)
 				{
-					printf("NG1 ... thread_function_for_storage_status() -> channel : %d, json_is wrong .. strByPassResult : \n%s\n",
-						channel, strByPassResult.c_str());
+					fprintf(stderr, "error : root\n");
+					fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
+					printf("strByPassResult : %s\n", strByPassResult.c_str());
+
+					g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 					// DAS			
+					g_Worker_Storage_info_[channel].das_status.clear();
 					g_Worker_Storage_info_[channel].das_status = "unknown";
 					// NAS			
+					g_Worker_Storage_info_[channel].nas_status.clear();
 					g_Worker_Storage_info_[channel].nas_status = "unknown";
 				}
 				else
 				{
-					int ret;
-					int bEnable;
-					size_t index;
-					char* charType, * charStatus;
-					json_t* obj;
+					json_t* json_array = json_object_get(json_strRoot, "Storages");
 
-					json_array_foreach(json_array, index, obj)
+					if (!json_array)
 					{
-						//  - Type(<enum> DAS, NAS) , Enable , Satus
-						ret = json_unpack(obj, "{s:s, s:b, s:s}",
-							"Type", &charType, "Enable", &bEnable, "Status", &charStatus);
+						printf("NG1 ... thread_function_for_storage_status() -> channel : %d, json_is wrong .. strByPassResult : \n%s\n",
+							channel, strByPassResult.c_str());
 
-						if (ret)
+						g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
+						// DAS			
+						g_Worker_Storage_info_[channel].das_status.clear();
+						g_Worker_Storage_info_[channel].das_status = "unknown";
+						// NAS		
+						g_Worker_Storage_info_[channel].nas_status.clear();
+						g_Worker_Storage_info_[channel].nas_status = "unknown";
+					}
+					else
+					{
+						int ret;
+						int bEnable;
+						size_t index;
+						char* charType, * charStatus;
+						json_t* obj;
+
+						json_array_foreach(json_array, index, obj)
 						{
-							printf("[hwanjang] Error !! thread_function_for_storage_status() -> channel : %d, json_unpack fail .. !!!\n", channel);
-							printf("strByPassResult : %s\n", strByPassResult.c_str());
-						}
-						else
-						{
-							//printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n",	channel, charType, bEnable);
+							//  - Type(<enum> DAS, NAS) , Enable , Satus
+							ret = json_unpack(obj, "{s:s, s:b, s:s}",
+								"Type", &charType, "Enable", &bEnable, "Status", &charStatus);
 
-							if (strncmp("DAS", charType, 3) == 0)
+							if (ret)
 							{
-								g_Worker_Storage_info_[channel].das_enable = bEnable;
+								printf("[hwanjang] Error !! thread_function_for_storage_status() -> channel : %d, json_unpack fail .. !!!\n", channel);
+								printf("strByPassResult : %s\n", strByPassResult.c_str());
 
-								if (bEnable)
-								{
-									g_Worker_Storage_info_[channel].das_status = charStatus;
-								}
-								else
-								{
-									g_Worker_Storage_info_[channel].das_status.clear();
-								}
-							}
-							else if (strncmp("NAS", charType, 3) == 0)
-							{
-								g_Worker_Storage_info_[channel].nas_enable = bEnable;
-
-								if (bEnable)
-								{
-									g_Worker_Storage_info_[channel].nas_status = charStatus;
-								}
-								else
-								{
-									g_Worker_Storage_info_[channel].nas_status.clear();
-								}
+								g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
+								// DAS			
+								g_Worker_Storage_info_[channel].das_status.clear();
+								g_Worker_Storage_info_[channel].das_status = "unknown";
+								// NAS		
+								g_Worker_Storage_info_[channel].nas_status.clear();
+								g_Worker_Storage_info_[channel].nas_status = "unknown";
 							}
 							else
 							{
-								// ??? unknown
+								if (strncmp("DAS", charType, 3) == 0)
+								{
+									g_Worker_Storage_info_[channel].das_enable = bEnable;
 
+									if (bEnable)
+									{
+										g_Worker_Storage_info_[channel].das_status.clear();
+										g_Worker_Storage_info_[channel].das_status = charStatus;
+										printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+									}
+									else
+									{
+										g_Worker_Storage_info_[channel].das_status.clear();
+									}
+
+									g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+									g_Worker_Storage_info_[channel].ConnectionStatus = "on";
+									g_Worker_Storage_info_[channel].CheckConnectionStatus = 1;
+								}
+								else if (strncmp("NAS", charType, 3) == 0)
+								{
+									g_Worker_Storage_info_[channel].nas_enable = bEnable;
+
+									if (bEnable)
+									{
+										g_Worker_Storage_info_[channel].nas_status.clear();
+										g_Worker_Storage_info_[channel].nas_status = charStatus;
+										printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+									}
+									else
+									{
+										g_Worker_Storage_info_[channel].nas_status.clear();
+									}
+
+									g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+									g_Worker_Storage_info_[channel].ConnectionStatus = "on";
+									g_Worker_Storage_info_[channel].CheckConnectionStatus = 1;
+								}
+								else
+								{
+									// ??? unknown
+									g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
+									// DAS			
+									g_Worker_Storage_info_[channel].das_status.clear();
+									g_Worker_Storage_info_[channel].das_status = "unknown";
+									// NAS		
+									g_Worker_Storage_info_[channel].nas_status.clear();
+									g_Worker_Storage_info_[channel].nas_status = "unknown";
+								}
 							}
 						}
 					}
 				}
 			}
 		}
-	}
-	else  // fail
-	{
-		if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
+		else  // fail
 		{
-			// authfail
-			g_Worker_Storage_info_[channel].ConnectionStatus = "authError";
-		}
-		else if (resCode == CURLE_OPERATION_TIMEDOUT)
-		{
-			// timeout
-		}
-		else {
-			// another error			
-			printf("thread_function_for_storage_status() -> CURL_Process fail .. strError : %s\n", curl_easy_strerror(resCode));
-			g_Worker_Storage_info_[channel].ConnectionStatus = "unknown";
-		}
-	}
+			g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 
+			if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
+			{
+				// authfail
+				g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+				g_Worker_Storage_info_[channel].ConnectionStatus = "authError";
+				g_Worker_Storage_info_[channel].CheckConnectionStatus = 4;
+			}
+			else if (resCode == CURLE_OPERATION_TIMEDOUT)
+			{
+				// timeout
+				g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+				g_Worker_Storage_info_[channel].ConnectionStatus = "timeout";
+				g_Worker_Storage_info_[channel].CheckConnectionStatus = 3;
+			}
+			else {
+				// another error			
+				printf("thread_function_for_storage_status() -> CURL_Process fail .. strError : %s\n", curl_easy_strerror(resCode));
+				g_Worker_Storage_info_[channel].ConnectionStatus.clear();
+				g_Worker_Storage_info_[channel].ConnectionStatus = "unknown";
+				g_Worker_Storage_info_[channel].CheckConnectionStatus = 5;
+			}
+		}
+	}
+	else
+	{
+		printf("thread_function_for_storage_status() -> channel : %d , skip !!!!!!! time : %lld \n", channel, check_time);
+	}
 	g_Worker_Storage_info_[channel].update_check = true;
 }
 
@@ -2287,9 +2752,10 @@ int sunapi_manager::ThreadStartSendResponseForDashboardView(const std::string st
 
 void sunapi_manager::thread_function_for_send_response_for_dashboard(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	printf("\nthread_function_for_send_response_for_dashboard() -> Start .... \n ");
-
 	time_t start_t = time(NULL);
+
+	printf("\nthread_function_for_send_response_for_dashboard() -> Start .... time : %lld\n", start_t);
+
 	time_t quit_t;
 
 	int i = 0;
@@ -2297,20 +2763,17 @@ void sunapi_manager::thread_function_for_send_response_for_dashboard(int maxChan
 	{
 		for (i = 0; i < maxChannel; i++)
 		{
-			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
+			if (g_Worker_Storage_info_[i].update_check != true)
 			{
-				if (g_Worker_Storage_info_[i].update_check != true)
-				{
-					printf("\nthread_function_for_send_response_for_dashboard() -> i : %d  , update_check : %d --> break !!!\n", i , g_Worker_Storage_info_[i].update_check);
-					break;
-				}
+				printf("\nthread_function_for_send_response_for_dashboard() -> i : %d  , update_check : %d --> break !!!\n", i , g_Worker_Storage_info_[i].update_check);
+				break;
 			}
 
 			if ((maxChannel - 1) == i)
 			{
 				printf("\n#############################################################################\n");
 				printf("\n thread_function_for_send_response_for_dashboard() -> Start .... \n ");
+
 				UpdateStorageInfos();
 
 				SendResponseForDashboardView(strTopic, strCommand, strType, strView, strTid);
@@ -2319,7 +2782,7 @@ void sunapi_manager::thread_function_for_send_response_for_dashboard(int maxChan
 
 				time_t end_time = time(NULL);
 				std::cout << "thread_function_for_send_response_for_dashboard() -> End ... time : " << (long int)end_time << " , diff : "
-					<< (long int)(end_time - g_UpdateTimeOfStorageStatus) << std::endl;
+					<< (long int)(end_time - g_StartTimeOfStorageStatus) << std::endl;
 
 				return;
 			}
@@ -2342,12 +2805,12 @@ void sunapi_manager::thread_function_for_send_response_for_dashboard(int maxChan
 			Set_update_checkForStorageInfo();
 
 			std::cout << "thread_function_for_send_response_for_dashboard() -> End ... time : " << (long int)quit_t << " , diff : "
-				<< (long int)(quit_t - start_t) << std::endl;
+				<< (long int)(quit_t - g_StartTimeOfStorageStatus) << std::endl;
 
 			return;
 		}
 
-		sleep_for(std::chrono::milliseconds(1));
+		sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 	}
 }
 
@@ -2382,7 +2845,7 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 
 	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
-		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
+		if (g_Storage_info_[i].CheckConnectionStatus != 0)
 		{
 			strDasStatus.clear();
 			strNasStatus.clear();
@@ -2392,10 +2855,10 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 			//sprintf(charCh, "%d", i);  // int -> char*
 			sprintf_s(charCh, sizeof(charCh), "%d", i);  // int -> char*
 
-			if (!g_SubDevice_info_[i].ConnectionStatus.empty())
-				json_object_set_new(sub_ConnectionMsg, charCh, json_string(g_SubDevice_info_[i].ConnectionStatus.c_str()));
-			else
+			if (g_Storage_info_[i].ConnectionStatus.empty())  // empty ???
 				json_object_set_new(sub_ConnectionMsg, charCh, json_string("unknown"));
+			else
+				json_object_set_new(sub_ConnectionMsg, charCh, json_string(g_Storage_info_[i].ConnectionStatus.c_str()));
 
 			connectionMsgCnt++;
 
@@ -2481,6 +2944,8 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 					json_object_set_new(sub_StorageMsg, charCh, json_string("unknown"));
 				}
 				storageMsgCnt++;
+
+				printf("[hwanjang] SendResponseForDashboardView() -> %d. DAS cnt : %d\n", i, storageMsgCnt);
 			}
 
 			// NAS
@@ -2502,6 +2967,8 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 					json_object_set_new(sub_StorageMsg, charCh, json_string("unknown"));
 				}
 				storageMsgCnt++;
+
+				printf("[hwanjang] SendResponseForDashboardView() -> %d. NAS cnt : %d\n", i, storageMsgCnt);
 			}
 #endif
 		}
@@ -2534,7 +3001,7 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);		
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	printf("SendStorageInfoForDashboardView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	//printf("SendStorageInfoForDashboardView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 }
@@ -2544,41 +3011,28 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 
 bool sunapi_manager::GetDeviceInfoOfSubdevices()
 {
-	time_t update_time = time(NULL);
+	//  - LinkStatus , IPv4Address , MACAddress
 
-	if ((update_time - g_UpdateTimeOfDeviceInfo) > GET_WAIT_TIMEOUT)
+	int maxChannel = g_Gateway_info_->maxChannel;
+
+	std::string deviceIP = g_StrDeviceIP;
+	std::string devicePW = g_StrDevicePW;
+
+	for (int i = 0; i < maxChannel; i++)
 	{
-		g_Sub_device_info_Cnt = 0;
-
-		//  - LinkStatus , IPv4Address , MACAddress
-
-		g_UpdateTimeOfDeviceInfo = time(NULL);
-
-		int maxChannel = g_Gateway_info_->maxChannel;
-
-		//std::cout << "GetDeviceInfoOfSubdevices() -> Start ... maxChannel : " << maxChannel << ", time : " << g_UpdateTimeOfDeviceInfo << std::endl;
-		printf("GetDeviceInfoOfSubdevices() -> Start ... maxChannel : %d , time : %lld\n", maxChannel, g_UpdateTimeOfDeviceInfo);
-
-		std::string deviceIP = g_StrDeviceIP;
-		std::string devicePW = g_StrDevicePW;
-
-		for (int i = 0; i < maxChannel; i++)
+#if 0 // 21.11.09 connection info
+		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
+#else
+		if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)		// Success 
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)	// timeout
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 4)	// authError
+			|| (g_SubDevice_info_[i].CheckConnectionStatus == 5))  // unknown
+#endif
 		{
-			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
-			{
-				ThreadStartForSubDeviceInfo(i, deviceIP, devicePW);
+			ThreadStartForSubDeviceInfo(i, deviceIP, devicePW);
 
-				sleep_for(std::chrono::milliseconds(SLEEP_TIME));
-			}
+			sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 		}
-	}
-	else
-	{
-		printf("GetDeviceInfoOfSubdevices()-> check %ld ... Skip !!!!!\n", (long int)(update_time - g_UpdateTimeOfNetworkInterface));
-
-		// skip to check
-		Set_update_checkForDeviceInfo();
 	}
 
 	return true;
@@ -2594,146 +3048,177 @@ int sunapi_manager::ThreadStartForSubDeviceInfo(int channel, const std::string d
 
 void sunapi_manager::thread_function_for_subdevice_info(int channel, const std::string deviceIP, const std::string devicePW)
 {
-	printf("thread_function_for_subdevice_info() -> channel : %d , Start to get subdevice info ...\n", channel);
+	time_t update_time = time(NULL);
+	time_t check_time = update_time - g_SubDevice_info_[channel].channel_update_time;
 
-	g_Worker_SubDevice_info_[channel].update_check_deviceinfo = false;
-	g_Worker_Firmware_Ver_info_[channel].fw_update_check = false;
+	printf("thread_function_for_subdevice_info() -> channel : %d , Start to get subdevice info ...time : %lld , check_time : %lld\n", channel, update_time, check_time);
 
-	// reset timeout
-	g_Worker_SubDevice_info_[channel].curl_responseCode = CURLE_OPERATION_TIMEDOUT;
-	g_Worker_SubDevice_info_[channel].ConnectionStatus = "timeout";
-
-	bool result = false;
-
-	std::string strByPassResult;
-
-	std::string strByPassURI = "/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view";
-
-	bool json_mode = true;
-	CURLcode resCode;
-	result = ByPassSUNAPI(channel, json_mode, deviceIP, devicePW, strByPassURI, &strByPassResult, &resCode);
-
-	g_Worker_SubDevice_info_[channel].curl_responseCode = resCode;
-
-	if (result)
+	if (check_time > GET_WAIT_TIMEOUT)
 	{
-		g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+		g_Worker_SubDevice_info_[channel].update_check_deviceinfo = false;
+		g_Worker_SubDevice_info_[channel].channel_update_time = time(NULL);
 
-		if (strByPassResult.empty())
-		{
-			printf("[hwanjang] strByPassResult is empty !!!\n");
-		}
-		else
-		{
-			json_error_t error_check;
-			json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);
+		bool result = false;
 
-			if (!json_strRoot)
+		std::string strByPassResult;
+
+		std::string strByPassURI = "/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view";
+
+		bool json_mode = true;
+		CURLcode resCode;
+		result = ByPassSUNAPI(channel, json_mode, deviceIP, devicePW, strByPassURI, &strByPassResult, &resCode);
+
+		g_Worker_SubDevice_info_[channel].curl_responseCode = resCode;
+
+		if (result)
+		{
+			if (strByPassResult.empty())
 			{
-				fprintf(stderr, "error : root\n");
-				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
-
-				printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n", 
-							channel, strByPassResult.c_str());
+				printf("[hwanjang] strByPassResult is empty !!!\n");
+				g_Worker_SubDevice_info_[channel].channel_update_time = 0;  // if failed to update, reset 0
 			}
 			else
 			{
-				// get Model
-				char* charModel;
-				int result = json_unpack(json_strRoot, "{s:s}", "Model", &charModel);
+				json_error_t error_check;
+				json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);
 
-				if (result)
+				if (!json_strRoot)
 				{
-					printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 1. json_unpack fail .. Model ...\n");
-					printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n", 
-								channel, strByPassResult.c_str());
-				}
-				else
-				{
-					g_Worker_SubDevice_info_[channel].DeviceModel = charModel;
-				}
+					fprintf(stderr, "error : root\n");
+					fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-				// get DeviceName
-				char* charDeviceName;
-				result = json_unpack(json_strRoot, "{s:s}", "DeviceName", &charDeviceName);
-
-				if (result)
-				{
-					printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 4. json_unpack fail .. DeviceName ...\n");
 					printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n",
 						channel, strByPassResult.c_str());
+
+					g_Worker_SubDevice_info_[channel].channel_update_time = 0;  // if failed to update, reset 0
 				}
 				else
 				{
-					g_Worker_SubDevice_info_[channel].DeviceName = charDeviceName;
-				}
+					// get Model
+					char* charModel;
+					int result = json_unpack(json_strRoot, "{s:s}", "Model", &charModel);
 
-				// get FirmwareVersion
-				char* charFirmwareVersion;
-				result = json_unpack(json_strRoot, "{s:s}", "FirmwareVersion", &charFirmwareVersion);
+					if (result)
+					{
+						printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 1. json_unpack fail .. Model ...\n");
+						printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n",
+							channel, strByPassResult.c_str());
+					}
+					else
+					{
+						g_Worker_SubDevice_info_[channel].DeviceModel.clear();
+						g_Worker_SubDevice_info_[channel].DeviceModel = charModel;
 
-				if (result)
-				{
-					printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 2. json_unpack fail .. FirmwareVersion ...\n");
-					printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n", 
-							channel, strByPassResult.c_str()); 
-				}
-				else
-				{
-					g_Worker_Firmware_Ver_info_[channel].FirmwareVersion = charFirmwareVersion;
-				}
+						g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+						g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+						g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
+					}
+
+					// get DeviceName
+					char* charDeviceName;
+					result = json_unpack(json_strRoot, "{s:s}", "DeviceName", &charDeviceName);
+
+					if (result)
+					{
+						printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 4. json_unpack fail .. DeviceName ...\n");
+						printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n",
+							channel, strByPassResult.c_str());
+					}
+					else
+					{
+						g_Worker_SubDevice_info_[channel].DeviceName.clear();
+						g_Worker_SubDevice_info_[channel].DeviceName = charDeviceName;
+					}
+
+					// get FirmwareVersion
+					char* charFirmwareVersion;
+					result = json_unpack(json_strRoot, "{s:s}", "FirmwareVersion", &charFirmwareVersion);
+
+					if (result)
+					{
+						printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 2. json_unpack fail .. FirmwareVersion ...\n");
+						printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n",
+							channel, strByPassResult.c_str());
+					}
+					else
+					{
+						g_Worker_SubDevice_info_[channel].Channel_FirmwareVersion.clear();
+						g_Worker_SubDevice_info_[channel].Channel_FirmwareVersion = charFirmwareVersion;
+
+						g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+						g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+						g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
+					}
 
 #if 1
-				// get MACAddress
-				char* charMACAddress;
-				result = json_unpack(json_strRoot, "{s:s}", "ConnectedMACAddress", &charMACAddress);
+					// get MACAddress
+					char* charMACAddress;
+					result = json_unpack(json_strRoot, "{s:s}", "ConnectedMACAddress", &charMACAddress);
 
-				if (result)
-				{
-					printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 3. json_unpack fail .. ConnectedMACAddress ...\n");
-					printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n", 
-							channel, strByPassResult.c_str());					
-				}
-				else
-				{					
-					g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress = charMACAddress;
-				}
+					if (result)
+					{
+						printf("[hwanjang] Error !! thread_function_for_subdevice_info() -> 3. json_unpack fail .. ConnectedMACAddress ...\n");
+						printf("thread_function_for_subdevice_info() -> channel : %d , strSUNAPIResult : \n%s\n",
+							channel, strByPassResult.c_str());
+					}
+					else
+					{
+						g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress.clear();
+						g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress = charMACAddress;
+
+						g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+						g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+						g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
+					}
 #endif
+				}
+			}
+		}
+		else
+		{
+			printf("error ... thread_function_for_subdevice_info() -> channel : %d , ByPassSUNAPI() -> return error !!\n", channel);
+
+			g_Worker_SubDevice_info_[channel].channel_update_time = 0;  // if failed to update, reset 0
+
+			if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
+			{
+				// authfail
+				g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+				g_Worker_SubDevice_info_[channel].ConnectionStatus = "authError";
+				g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 4;
+			}
+			else if (resCode == CURLE_OPERATION_TIMEDOUT)
+			{
+				// timeout		
+				g_Worker_SubDevice_info_[channel].curl_responseCode = CURLE_OPERATION_TIMEDOUT;
+				g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+				g_Worker_SubDevice_info_[channel].ConnectionStatus = "timeout";
+				g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 3;
+			}
+			else {
+				// another error
+				printf("[hwanjang] %s : %d -> CURL_Process fail .. strError : %s\n", __FUNCTION__, __LINE__, curl_easy_strerror(resCode));
+				g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+				g_Worker_SubDevice_info_[channel].ConnectionStatus = "unknown";
+				g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 5;
 			}
 		}
 	}
 	else
 	{
-		printf("error ... thread_function_for_subdevice_info() -> channel : %d , ByPassSUNAPI() -> return error !!\n", channel);
-
-		if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
-		{
-			// authfail
-			g_Worker_Storage_info_[channel].ConnectionStatus = "authError";
-		}
-		else if (resCode == CURLE_OPERATION_TIMEDOUT)
-		{
-			// timeout
-		}
-		else {
-			// another error
-			printf("[hwanjang] %s : %d -> CURL_Process fail .. strError : %s\n", __FUNCTION__, __LINE__, curl_easy_strerror(resCode));
-			g_Worker_Storage_info_[channel].ConnectionStatus = "unknown";
-		}
+		printf("thread_function_for_subdevice_info() -> channel : %d , skip !!!!!!!! time : %lld\n", channel, check_time);
 	}
 
-	g_Worker_SubDevice_info_[channel].update_check_deviceinfo = true;
-	g_Worker_Firmware_Ver_info_[channel].fw_update_check = true;
+	g_Worker_SubDevice_info_[channel].update_check_deviceinfo = true;	
 }
 
 bool sunapi_manager::GetMacAddressOfSubdevices()
 {
+#if 1	// no longer used
 	time_t update_time = time(NULL);
 
 	if ((update_time - g_UpdateTimeOfNetworkInterface) > GET_WAIT_TIMEOUT)
 	{
-		g_Sub_network_info_Cnt = 0;
-
 		//  - LinkStatus , IPv4Address , MACAddress
 
 		g_UpdateTimeOfNetworkInterface = time(NULL);
@@ -2750,8 +3235,7 @@ bool sunapi_manager::GetMacAddressOfSubdevices()
 
 		for (int i = 0; i < maxChannel; i++)
 		{
-			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
+			if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
 			{
 				ThreadStartForNetworkInterface(i, deviceIP, devicePW);
 
@@ -2766,7 +3250,7 @@ bool sunapi_manager::GetMacAddressOfSubdevices()
 		// skip to check
 		Set_update_checkForNetworkInterface();
 	}
-
+#endif // no longer used
 	return true;
 }
 
@@ -2785,10 +3269,6 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 
 	g_Worker_SubDevice_info_[channel].NetworkInterface.update_check_networkinterface = false;
 
-	// reset timeout
-	g_Worker_SubDevice_info_[channel].curl_responseCode = CURLE_OPERATION_TIMEDOUT;
-	g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "timeout";
-
 	bool result = false;
 
 	std::string strByPassResult;
@@ -2803,8 +3283,6 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 
 	if (result)
 	{
-		g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "on";
-
 		if (!strByPassResult.empty())
 		{
 			json_error_t error_check;
@@ -2855,6 +3333,7 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[channel].NetworkInterface.LinkStatus.clear();
 								g_Worker_SubDevice_info_[channel].NetworkInterface.LinkStatus = charLink;
 							}
 
@@ -2867,7 +3346,17 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
 								g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address = charIPv4Address;
+
+								g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus.clear();
+								g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "on";
+								g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 1;
+
+								//  ---> if NetworkInterface.CheckConnectionStatusa is 1, g_Worker_SubDevice_info_ is on .... update 
+								g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+								g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+								g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
 							}
 
 							// get MACAddress
@@ -2879,14 +3368,39 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 							}
 							else
 							{
+								g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress.clear();
 								g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress = charMac;
+
+								g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus.clear();
+								g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "on";
+								g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 1;
+
+								//  ---> if NetworkInterface.CheckConnectionStatusa is 1, g_Worker_SubDevice_info_ is on .... update 
+								g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+								g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+								g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
+
 							}
 						}
 						else
 						{
+							g_Worker_SubDevice_info_[channel].NetworkInterface.LinkStatus.clear();
 							g_Worker_SubDevice_info_[channel].NetworkInterface.LinkStatus = charLink;
+
+							g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address.clear();
 							g_Worker_SubDevice_info_[channel].NetworkInterface.IPv4Address = charIPv4Address;
+
+							g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress.clear();
 							g_Worker_SubDevice_info_[channel].NetworkInterface.MACAddress = charMac;
+
+							g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus.clear();
+							g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "on";
+							g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 1;
+
+							//  ---> if NetworkInterface.CheckConnectionStatusa is 1, g_Worker_SubDevice_info_ is on .... update 
+							g_Worker_SubDevice_info_[channel].ConnectionStatus.clear();
+							g_Worker_SubDevice_info_[channel].ConnectionStatus = "on";
+							g_Worker_SubDevice_info_[channel].CheckConnectionStatus = 1;
 						}
 					}
 				}
@@ -2897,19 +3411,25 @@ void sunapi_manager::thread_function_for_network_interface(int channel, const st
 	{
 		printf("error ... thread_function_for_network_interface() -> channel : %d , ByPassSUNAPI() -> return error !!\n", channel);
 
+		g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus.clear();
+
 		if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
 		{
 			// authfail
 			g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "authError";
+			g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 4;
 		}
 		else if (resCode == CURLE_OPERATION_TIMEDOUT)
 		{
 			// timeout
+			g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "timeout";
+			g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 3;
 		}
 		else {
 			// another error			
 			printf("thread_function_for_network_interface() -> CURL_Process fail .. strError : %s\n", curl_easy_strerror(resCode));
 			g_Worker_SubDevice_info_[channel].NetworkInterface.ConnectionStatus = "unknown";
+			g_Worker_SubDevice_info_[channel].NetworkInterface.CheckConnectionStatus = 5;
 		}
 	}
 
@@ -2934,16 +3454,6 @@ void sunapi_manager::Reset_update_checkForDeviceInfo()
 	{
 		g_Worker_SubDevice_info_[i].update_check_deviceinfo = false;
 	}
-
-#if 0  // for test
-	// Get ConnectionStatus of subdevice
-	bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW);
-
-	if (!result)
-	{
-		printf("failed to get 2. connectionStatus of subdevice ... ");
-	}
-#endif
 }
 
 void sunapi_manager::Set_update_checkForNetworkInterface()
@@ -2961,16 +3471,6 @@ void sunapi_manager::Reset_update_checkForNetworkInterface()
 	{
 		g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface = false;
 	}
-
-#if 0  // for test
-	// Get ConnectionStatus of subdevice
-	bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW);
-
-	if (!result)
-	{
-		printf("failed to get 2. connectionStatus of subdevice ... ");
-	}
-#endif
 }
 
 int sunapi_manager::ThreadStartSendResponseForDeviceInfoView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
@@ -2984,9 +3484,10 @@ int sunapi_manager::ThreadStartSendResponseForDeviceInfoView(const std::string s
 
 void sunapi_manager::thread_function_for_send_response_for_deviceInfo(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	printf("\n thread_function_for_send_response_for_deviceInfo() -> Start .... \n ");
-
 	time_t start_t = time(NULL);
+
+	printf("\n thread_function_for_send_response_for_deviceInfo() -> Start .... time : %lld\n", start_t);
+
 	time_t quit_t;
 
 	int i = 0;
@@ -2994,20 +3495,11 @@ void sunapi_manager::thread_function_for_send_response_for_deviceInfo(int maxCha
 	{
 		for (i = 0; i < maxChannel; i++)
 		{
-			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
+			if (g_Worker_SubDevice_info_[i].update_check_deviceinfo != true)
 			{
-#if 0
-				if ((g_Worker_SubDevice_info_[i].update_check_deviceinfo != true)
-					|| (g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface != true))
-#else
-				if (g_Worker_SubDevice_info_[i].update_check_deviceinfo != true)
-#endif
-				{
-					printf("thread_function_for_send_response_for_deviceInfo() -> i : %d  , update_check_deviceinfo : %d , NetworkInterface.update_check_networkinterface : %d --> break !!!\n", 
-									i, g_Worker_SubDevice_info_[i].update_check_deviceinfo, g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface);
-					break;
-				}
+				printf("thread_function_for_send_response_for_deviceInfo() -> i : %d  , update_check_deviceinfo : %d , NetworkInterface.update_check_networkinterface : %d --> break !!!\n", 
+								i, g_Worker_SubDevice_info_[i].update_check_deviceinfo, g_Worker_SubDevice_info_[i].NetworkInterface.update_check_networkinterface);
+				break;
 			}
 
 			if ((maxChannel - 1) == i)
@@ -3024,10 +3516,9 @@ void sunapi_manager::thread_function_for_send_response_for_deviceInfo(int maxCha
 				Set_update_checkForDeviceInfo();
 				Set_update_checkForNetworkInterface();
 
-
 				time_t end_time = time(NULL);
 				std::cout << "thread_function_for_send_response_for_deviceInfo() -> End ... time : " << (long int)end_time << " , diff : "
-					<< (long int)(end_time - g_UpdateTimeOfNetworkInterface) << std::endl;
+					<< (long int)(end_time - g_StartTimeOfDeviceInfo) << std::endl;
 
 				return;
 			}
@@ -3052,7 +3543,7 @@ void sunapi_manager::thread_function_for_send_response_for_deviceInfo(int maxCha
 			Set_update_checkForNetworkInterface();
 
 			std::cout << "thread_function_for_send_response_for_deviceInfo() -> End ... time : " << (long int)quit_t << " , diff : "
-				<< (long int)(quit_t - start_t) << std::endl;
+				<< (long int)(quit_t - g_StartTimeOfDeviceInfo) << std::endl;
 
 			return;
 		}
@@ -3082,7 +3573,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	sub_DeviceNameMsg = json_object();
 	sub_ChannelTitleMsg = json_object();
 
-	//main_Msg["command"] = "dashboard";
+	//main_Msg["command"] = "deviceinfo";
 	json_object_set(main_ResponseMsg, "command", json_string(strCommand.c_str()));
 	//main_Msg["type"] = "view";
 	json_object_set(main_ResponseMsg, "type", json_string(strType.c_str()));
@@ -3157,8 +3648,6 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 			// deviceModel of subdevice -  21.09.30 add
 			if (g_SubDevice_info_[i].DeviceModel.empty() != true)
 			{
-				printf("index : %d , DeviceModel : %s\n", i, g_SubDevice_info_[i].DeviceModel.c_str());
-
 				json_object_set_new(sub_DeviceModelMsg, charCh, json_string(g_SubDevice_info_[i].DeviceModel.c_str()));
 				devModelMsgCnt++;
 			}
@@ -3226,7 +3715,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	//json_object_set(sub_Msg, "deviceType", json_string(strDeviceType.c_str()));
 	json_object_set(sub_Msg, "deviceModel", json_string(strDeviceModel.c_str()));
 	json_object_set(sub_Msg, "ipaddress", json_string(g_Gateway_info_->IPv4Address.c_str()));
-	json_object_set(sub_Msg, "webport", json_integer(g_Gateway_info_->WebPort));
+	json_object_set(sub_Msg, "webport", json_integer(g_Gateway_info_->HttpsPort));
 	json_object_set(sub_Msg, "macaddress", json_string(g_Gateway_info_->MACAddress.c_str()));
 	json_object_set(sub_Msg, "connection", json_string(g_Gateway_info_->ConnectionStatus.c_str()));
 
@@ -3244,7 +3733,7 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);		
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	printf("SendResponseForDeviceInfoView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	//printf("SendResponseForDeviceInfoView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 #endif
@@ -3261,17 +3750,17 @@ bool sunapi_manager::GetDeviceInfoOfGateway(const std::string& strGatewayIP, con
 	std::string _gatewayIP = strGatewayIP;
 	std::string _idPassword = strID_PW;
 
-	// reset
-	g_Gateway_info_->curl_responseCode = CURLE_OPERATION_TIMEDOUT;
-	g_Gateway_info_->ConnectionStatus = "timeout";
-
 	int max_channel = 0;
 
 	std::string request;
 
+#ifndef USE_HTTPS
 	request = "http://";
 	request.append(_gatewayIP);
 	request.append("/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view");
+#else  // 21.11.02 change -> https
+	request = "https://" + _gatewayIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view";
+#endif
 
 	//printf("private ID:PW = %s\n",userpw.c_str());
 
@@ -3284,14 +3773,23 @@ bool sunapi_manager::GetDeviceInfoOfGateway(const std::string& strGatewayIP, con
 	bool json_mode = true;
 	bool ssl_opt = false;
 
+#if 1
 	resCode = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &strSUNAPIResult);
+#else
+	ChunkStruct chunk_data;
+
+	chunk_data.memory = (char*)malloc(1);
+	chunk_data.size = 0;
+
+	resCode = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, _idPassword, &chunk_data);
+
+	strSUNAPIResult = chunk_data.memory;
+#endif
 
 	g_Gateway_info_->curl_responseCode = resCode;
 
 	if (resCode == CURLE_OK)
 	{
-		g_Gateway_info_->ConnectionStatus = "on";
-
 		if (strSUNAPIResult.empty())
 		{
 			printf("[hwanjang] GetDeviceInfoOfGateway() strSUNAPIResult is empty !!!\n");
@@ -3324,10 +3822,15 @@ bool sunapi_manager::GetDeviceInfoOfGateway(const std::string& strGatewayIP, con
 			}
 			else
 			{
+				g_Gateway_info_->DeviceModel.clear();
 				g_Gateway_info_->DeviceModel = charModel;
+
+				g_Gateway_info_->ConnectionStatus.clear();
+				g_Gateway_info_->ConnectionStatus = "on";
 			}
 
 			// get FirmwareVersion
+#ifndef USE_ARGV_JSON
 			char* charFirmwareVersion;
 			result = json_unpack(json_strRoot, "{s:s}", "FirmwareVersion", &charFirmwareVersion);
 
@@ -3340,27 +3843,29 @@ bool sunapi_manager::GetDeviceInfoOfGateway(const std::string& strGatewayIP, con
 			{
 				g_Gateway_info_->FirmwareVersion = charFirmwareVersion;
 			}
+#endif
 		}
 	}
 	else
 	{
 		printf("GetDeviceInfoOfGateway() -> error cURL res : %d!!!\n", resCode);
-		std::string strError;
+
+		g_Gateway_info_->ConnectionStatus.clear();
 		// CURL_Process fail
 		if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
 		{
 			// authfail
-			strError = "authError";
 			g_Gateway_info_->ConnectionStatus = "authError";
 		}
 		else if (resCode == CURLE_OPERATION_TIMEDOUT)
 		{
 			// timeout
+			g_Gateway_info_->ConnectionStatus = "timeout";
+
 		}
 		else {
 			// another error		
-			//strError = "unknown";
-			strError = curl_easy_strerror(resCode);
+			std::string strError = curl_easy_strerror(resCode);
 
 			printf("GetDeviceInfoOfGateway() -> CURL_Process fail .. strError : %s\n", strError.c_str());
 			g_Gateway_info_->ConnectionStatus = "unknown";
@@ -3401,6 +3906,8 @@ bool sunapi_manager::GetFirmwareVersionFromText(std::string strText, std::string
 
 bool sunapi_manager::GetFirmwareVersionOfSubdevices()
 {
+#if 1	// 2021.11.04 - no longer used
+
 	// Get firmware version - /stw-cgi/system.cgi?msubmenu=deviceinfo&action=view
 	g_UpdateTimeForFirmwareVersionOfSubdevices = time(NULL);
 
@@ -3411,8 +3918,7 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices()
 
 	for (int i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
-		if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-			|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
+		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)     // not Disconnect ...
 		{
 			//printf("GetFirmwareVersionOfSubdevices() -> index : %d ... ConnectionStatus : %d\n", i, g_Worker_SubDevice_info_[i].CheckConnectionStatus);
 
@@ -3421,6 +3927,7 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices()
 			sleep_for(std::chrono::milliseconds(SLEEP_TIME));
 		}
 	}
+#endif // 2021.11.04 - no longer used
 	return true;
 }
 
@@ -3433,20 +3940,36 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 
 	std::string request;
 
+#ifndef USE_HTTPS
 	request = "http://";
 	request.append(deviceIP);
 	request.append("/stw-cgi/media.cgi?msubmenu=cameraupgrade&action=view");
+#else  // 21.11.02 change -> https
+	request = "https://" + deviceIP + ":" + std::to_string(g_HttpsPort) + "/stw-cgi/media.cgi?msubmenu=cameraupgrade&action=view";
+#endif
 
 #if 1  // 2019.09.05 hwanjang - sunapi debugging
 	printf("sunapi_manager::GetFirmwareVersionOfSubdevices() -> SUNAPI Request : %s\n", request.c_str());
 #endif
 
 	CURLcode res;
+
 	std::string strSUNAPIResult;
 	bool json_mode = true;
 	bool ssl_opt = false;
 
+#if 1
 	res = CURL_Process(json_mode, ssl_opt, CURL_TIMEOUT, request, devicePW, &strSUNAPIResult);
+#else
+	ChunkStruct chunk_data;
+
+	chunk_data.memory = (char*)malloc(1);
+	chunk_data.size = 0;
+
+	res = curlProcess(json_mode, ssl_opt, CURL_TIMEOUT, request, devicePW, &chunk_data);
+
+	strSUNAPIResult = chunk_data.memory;
+#endif
 
 	*resCode = res;
 
@@ -3459,6 +3982,9 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 		if (strSUNAPIResult.empty())
 		{
 			printf("[hwanjang] GetFirmwareVersionOfSubdevices() result string is empty !!!\n");
+
+			g_UpdateTimeForFirmwareVersionOfSubdevices = 0;  // fail -> reset 0
+
 			return false;
 		}
 
@@ -3472,6 +3998,8 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 
 			printf("strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
 
+			g_UpdateTimeForFirmwareVersionOfSubdevices = 0;  // fail -> reset 0
+
 			return false;
 		}
 
@@ -3480,6 +4008,9 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 		if (!json_is_array(json_array))
 		{
 			printf("NG1 ... GetFirmwareVersionOfSubdevices() -> json_is_array fail !!!\n");
+
+			g_UpdateTimeForFirmwareVersionOfSubdevices = 0;  // fail -> reset 0
+
 			return false;
 		}
 
@@ -3491,6 +4022,9 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 
 		// get FirmwareVersion
 		json_array_foreach(json_array, index, obj) {
+
+			g_Worker_Firmware_Ver_info_[i].fw_update_check = false;
+
 			result = json_unpack(obj, "{s:s}", "CurrentVersion", &charFirmwareVersion);
 
 			if (result)
@@ -3503,7 +4037,13 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 				if (strlen(charFirmwareVersion) != 0)
 				{
 					//printf("index : %d , CurrentVersion = %s\n", index, charFirmwareVersion);
+
+					g_Worker_Firmware_Ver_info_[index].FirmwareVersion.clear();
 					g_Worker_Firmware_Ver_info_[index].FirmwareVersion = charFirmwareVersion;
+				}
+				else
+				{
+					printf("index : %d , CurrentVersion is empty !!!!!!!!!!!!!!!!!!!!\n", index);
 				}
 			}
 
@@ -3519,9 +4059,16 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 				if (strlen(charStatus) != 0)
 				{
 					//printf("index : %d , charStatus = %s\n", index, charStatus);
+					g_Worker_Firmware_Ver_info_[index].UpgradeStatus.clear();
 					g_Worker_Firmware_Ver_info_[index].UpgradeStatus = charStatus;
 				}
+				else
+				{
+					printf("index : %d , Status is empty !!!!!!!!!!!!!!!!!!!!\n", index);
+				}
 			}
+
+			g_Worker_Firmware_Ver_info_[i].fw_update_check = true;
 		}
 	}
 	else
@@ -3529,6 +4076,8 @@ bool sunapi_manager::GetFirmwareVersionOfSubdevices(const std::string deviceIP, 
 		time_t end_time = time(NULL);
 		std::cout << "GetFirmwareVersionOfSubdevices() -> failed ... End time : " << (long int)end_time << " , diff : "
 			<< (long int)(end_time - g_UpdateTimeForFirmwareVersionOfSubdevices) << std::endl;
+
+		g_UpdateTimeForFirmwareVersionOfSubdevices = 0;  // fail -> reset 0
 
 		return false;
 	}
@@ -3553,9 +4102,6 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 	//printf("thread_function_for_firmware_version() -> channel : %d , Start to get FirmwareVersion ...\n", channel);
 
 	g_Worker_Firmware_Ver_info_[channel].fw_update_check = false;
-
-	// reset timeout
-	g_Worker_Firmware_Ver_info_[channel].curl_responseCode = CURLE_OPERATION_TIMEDOUT;
 
 	bool result = false;
 
@@ -3592,10 +4138,14 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 						
 				if (result)
 				{
-					g_Worker_Firmware_Ver_info_[channel].FirmwareVersion = strResult;
+					if (!strResult.empty())
+					{
+						g_Worker_Firmware_Ver_info_[channel].FirmwareVersion.clear();
+						g_Worker_Firmware_Ver_info_[channel].FirmwareVersion = strResult;
 
-					printf("thread_function_for_firmware_version() -> 1 ... channel : %d, FirmwareVersion : %s\n",
-						channel, strResult.c_str());
+						printf("thread_function_for_firmware_version() -> 1 ... channel : %d, FirmwareVersion : %s\n",
+							channel, strResult.c_str());
+					}
 				}
 				else
 				{
@@ -3616,42 +4166,15 @@ void sunapi_manager::thread_function_for_firmware_version(int channel, const std
 				}
 				else
 				{
-					g_Worker_Firmware_Ver_info_[channel].FirmwareVersion = charFirmwareVersion;
-					
-					printf("thread_function_for_firmware_version() -> channel : %d, FirmwareVersion : %s\n",
-						channel, charFirmwareVersion);
-				}
-#if 0	// no need
-				// get Model
-				char* charModel;
-				ret = json_unpack(json_strRoot, "{s:s}", "Model", &charModel);
+					if (strlen(charFirmwareVersion) > 0)
+					{
+						g_Worker_Firmware_Ver_info_[channel].FirmwareVersion.clear();
+						g_Worker_Firmware_Ver_info_[channel].FirmwareVersion = charFirmwareVersion;
 
-				if (ret)
-				{
-					printf("[hwanjang] Error !! thread_function_for_firmware_version() -> 2. json_unpack fail .. Model ...\n");
-					printf("thread_function_for_firmware_version() -> channel : %d , strSUNAPIResult : \n%s\n",
-						channel, strByPassResult.c_str());					
+						printf("thread_function_for_firmware_version() -> channel : %d, FirmwareVersion : %s\n",
+							channel, charFirmwareVersion);
+					}
 				}
-				else
-				{
-					g_Worker_SubDevice_info_[channel].DeviceModel = charModel;
-				}
-
-				// get DeviceName
-				char* charDeviceName;
-				ret = json_unpack(json_strRoot, "{s:s}", "DeviceName", &charDeviceName);
-
-				if (ret)
-				{
-					printf("[hwanjang] Error !! thread_function_for_firmware_version() -> 3. json_unpack fail .. DeviceName ...\n");
-					printf("thread_function_for_firmware_version() -> channel : %d , strSUNAPIResult : \n%s\n",
-						channel, strByPassResult.c_str());					
-				}
-				else
-				{
-					g_Worker_SubDevice_info_[channel].DeviceName = charDeviceName;
-				}
-#endif
 			}
 		}
 	}
@@ -3681,7 +4204,7 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	sub_LatestVersionMsg = json_object();
 	sub_UpgradeStatusMsg = json_object();	
 
-	//main_Msg["command"] = "dashboard";
+	//main_Msg["command"] = "firmware";
 	json_object_set(main_ResponseMsg, "command", json_string(strCommand.c_str()));
 	//main_Msg["type"] = "view";
 	json_object_set(main_ResponseMsg, "type", json_string(strType.c_str()));
@@ -3706,6 +4229,19 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 				json_object_set_new(sub_FWVersionMsg, charCh, json_string(g_Firmware_Ver_info_[i].FirmwareVersion.c_str()));
 				fwVersionMsgCnt++;
 			}
+			else  // check Channel_FirmwareVersion of deviceinfo
+			{
+				printf("[hwanjang] SendResponseForFirmwareView() -> channel : %d, FirmwareVersion is empty !!! -> use Channel_FirmwareVersion !!! \n", i);
+				if (g_SubDevice_info_[i].Channel_FirmwareVersion.empty() != true)
+				{
+					json_object_set_new(sub_FWVersionMsg, charCh, json_string(g_Firmware_Ver_info_[i].FirmwareVersion.c_str()));
+					fwVersionMsgCnt++;
+				}
+				else
+				{
+					printf("\n[hwanjang] SendResponseForFirmwareView() -> channel : %d, FirmwareVersion & Channel_FirmwareVersion is empty @@@@@@@ \n", i);
+				}
+			}
 
 			// latestFirmwareVersion of subdevice
 			if (g_Firmware_Ver_info_[i].LatestFirmwareVersion.empty() != true)
@@ -3722,9 +4258,6 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 			}			
 		}
 	}
-
-	//sub_SubdeviceMsg["firmwareVersion"] = sub_IPAddressMsg;
-	//sub_SubdeviceMsg["latestFirmwareVersion"] = sub_WebprotMsg;
 
 	if (fwVersionMsgCnt > 0)
 	{
@@ -3749,7 +4282,7 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	else
 	{
 		char tempVersion[16] = { 0, };
-		sprintf(tempVersion,"%s", __DATE__);
+		sprintf_s(tempVersion, sizeof(tempVersion), "%s", __DATE__);
 
 		json_object_set(sub_Msg, "firmwareVersion", json_string(tempVersion));
 	}
@@ -3770,7 +4303,7 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);		
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	printf("SendResponseForFirmwareView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	//printf("SendResponseForFirmwareView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 }
@@ -3798,9 +4331,30 @@ bool sunapi_manager::GetLatestFirmwareVersionFromFile(std::string file_name)
 
 	std::ifstream input_file(file_name);
 	if (!input_file.is_open()) {
-		std::cerr << "Could not open the file - '"
-			<< file_name << "'" << std::endl;
-		return false;
+		std::cerr << "GetLatestFirmwareVersionFromFile() -> 1. Could not open the file - '"
+			<< file_name << "' ... retry !!!!!" << std::endl;
+
+		// Update Firmware version info
+		std::string update_FW_Info_url = "https://update.websamsung.net/FW/Update_FW_Info3.txt";
+		int result = GetLatestFirmwareVersionFromURL(update_FW_Info_url);
+		if (!result)
+		{
+			printf("GetLatestFirmwareVersionFromURL() -> fail to get latest version ... \n");
+
+			g_UpdateTimeForlatestFirmwareVersion = 0;  // if failed to update ... reset 0
+
+			return false;
+		}
+		else
+		{
+			std::ifstream input_file(file_name);
+			if (!input_file.is_open()) {
+				std::cerr << "GetLatestFirmwareVersionFromFile() -> 1. Could not open the file - '"
+					<< file_name << "' ... Fail @@@@@@" << std::endl;
+
+				return false;
+			}
+		}		
 	}
 	
 	std::vector<std::string> str_result;
@@ -3836,30 +4390,54 @@ bool sunapi_manager::GetLatestFirmwareVersionFromFile(std::string file_name)
 	}	
 	
 	int i = 0, j = 0;
+	int countLatestFirmwareVersion = 0;
 
 	for (i = 0; i < g_Gateway_info_->maxChannel; i++)
 	{
 		// reset LatestFirmwareVersion and then update ...
-		g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.clear();
 		g_Worker_Firmware_Ver_info_[i].last_fw_update_check = false;
 
-		if (g_Worker_SubDevice_info_[i].CheckConnectionStatus != 0)
+		if (g_SubDevice_info_[i].CheckConnectionStatus != 0)
 		{
-			for (j = 0; j < (int)g_vecFirmwareInfos.size(); j++)
+			if (g_SubDevice_info_[i].DeviceModel.empty())
 			{
-				if (g_Worker_SubDevice_info_[i].DeviceModel.find(g_vecFirmwareInfos[j].model) != std::string::npos)
-				{					
-					g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion = g_vecFirmwareInfos[j].version_info;					
+				printf("\n\n@@@@@@@ channel : %d , DeviceModel is empty !!!! ... LatestFirmwareVersion not found @@@@@@@ \n\n", i);
+			}
+			else
+			{
+				for (j = 0; j < (int)g_vecFirmwareInfos.size(); j++)
+				{
+					if (g_SubDevice_info_[i].DeviceModel.find(g_vecFirmwareInfos[j].model) != std::string::npos)
+					{
+						g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.clear();
 
-					printf("GetLatestFirmwareVersionFromFile() -> channel : %d, Model : %s , LatestFirmwareVersion : %s\n",
-								i, g_Worker_SubDevice_info_[i].DeviceModel.c_str(), g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.c_str());
+						g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion = g_vecFirmwareInfos[j].version_info;
 
-					break;
+						printf("GetLatestFirmwareVersionFromFile() -> channel : %d, Model : %s , LatestFirmwareVersion : %s\n",
+							i, g_SubDevice_info_[i].DeviceModel.c_str(), g_Worker_Firmware_Ver_info_[i].LatestFirmwareVersion.c_str());
+
+						countLatestFirmwareVersion++;
+						break;
+					}
+
+					if (j == ((int)g_vecFirmwareInfos.size() - 1))
+					{
+						printf("\n\n@@@@@@@ channel : %d , Model : %s ... LatestFirmwareVersion not found @@@@@@@ \n\n", i, g_SubDevice_info_[i].DeviceModel.c_str());
+#if 0 // for debug
+						for (int k = 0; k < (int)g_vecFirmwareInfos.size(); k++)
+						{
+							printf("GetLatestFirmwareVersionFromFile() -> channel : %d, Model : %s , g_vecFirmwareInfos[%d].model : %s\n",
+								i, g_SubDevice_info_[i].DeviceModel.c_str(), k, g_vecFirmwareInfos[k].model.c_str());
+						}
+#endif
+					}
 				}
 			}
 		}
 		g_Worker_Firmware_Ver_info_[i].last_fw_update_check = true;
 	}
+
+	printf("GetLatestFirmwareVersionFromFile() -> End ... countLatestFirmwareVersion : %d\n", countLatestFirmwareVersion);
 
 	return true;
 }
@@ -3895,7 +4473,7 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* set URL to get here */
 		curl_easy_setopt(curl_handle, CURLOPT_URL, update_FW_Info_url.c_str());
 
-		std::string ca_path = "config/ca-certificates.crt";
+		std::string ca_path = CA_FILE_PATH;
 		curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
 		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 
@@ -3983,9 +4561,6 @@ void sunapi_manager::SendResponseForUpdateFirmware(const std::string& strTopic,
 		rawCodeMsgCnt++;
 	}
 
-	//sub_SubdeviceMsg["firmwareVersion"] = sub_IPAddressMsg;
-	//sub_SubdeviceMsg["latestFirmwareVersion"] = sub_WebprotMsg;
-
 	json_object_set(sub_SubdeviceMsg, "resCode", json_integer(resCode));
 
 	if (rawCodeMsgCnt > 0)
@@ -4042,98 +4617,17 @@ void sunapi_manager::thread_function_for_update_infos(int second)
 
 void sunapi_manager::UpdateDataForDashboardView()
 {
-	GetDataForFirmwareVersionInfo();
-
-	sleep_for(std::chrono::milliseconds(1 * 1000));
-
-	//GetDataForSubdeviceInfo();
-
-	sleep_for(std::chrono::milliseconds(2 * 1000));
-
-	GetDataForStorageInfo();
-
-	sleep_for(std::chrono::milliseconds(2 * 1000));
-
-	UpdateSubdeviceInfos();
-	UpdateSubdeviceNetworkInterfaceInfos();
-
-	UpdateStorageInfos();
+	// update ...
 }
 
-// not used
-void sunapi_manager::GetDataForSubdeviceInfo()
-{
-#if 0
-	std::cout << "GetDataForSubdeviceInfo() start ..." << time(NULL) << std::endl;
-
-	// Get ConnectionStatus of subdevice
-	CURLcode resCode;
-	bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
-
-	if (!result)
-	{
-		printf("failed to get GetRegiesteredCameraStatus ... 1");
-
-		result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
-		if (!result)
-		{
-			printf("failed to get GetRegiesteredCameraStatus ... 2 ... return !!");
-
-			if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
-			{
-				// authfail
-			}
-			else if (resCode == CURLE_OPERATION_TIMEDOUT)
-			{
-				// timeout
-			}
-			else {
-				// another error
-
-			}
-			return;
-		}
-	}
-
-	//int connectionCnt = GetConnectionCount();
-	//std::cout << "GetDataForSubdeviceInfo() -> connectionCnt : " << connectionCnt << std::endl;
-
-	time_t update_time = time(NULL);
-
-	if ((update_time - g_UpdateTimeOfNetworkInterface) > 10)
-	{
-		GetMacAddressOfSubdevices();
-	}
-
-	//UpdateSubdeviceInfos();
-#endif
-}
-
-void sunapi_manager::GetDataForStorageInfo()
-{
-	std::cout << "GetDataForStorageInfo() start ..." << time(NULL) << std::endl;
-
-	//int connectionCnt = GetConnectionCount();
-	//std::cout << "GetDataForStorageInfo() -> connectionCnt : " << connectionCnt << std::endl;
-
-	// Get Storage info
-	//GetStoragePresenceOfSubdevices();
-
-	//sleep_for(std::chrono::milliseconds(1 * 1000));
-
-	//GetStorageStatusOfSubdevices();
-
-	//UpdateStorageInfos();
-}
-
-void sunapi_manager::GetDataForFirmwareVersionInfo()
+bool sunapi_manager::GetDataForFirmwareVersionInfo()
 {
 	std::cout << "GetDataForFirmwareVersionInfo() start ..." << time(NULL) << std::endl;
 
-	g_UpdateTimeForFirmwareVersionOfSubdevices = time(NULL);
-
 	// get LatestFirmwareVersion from URL
 	ThreadStartGetLatestFirmwareVersionFromURL();
+
+	sleep_for(std::chrono::milliseconds(1 * 500));
 
 	// bypass
 	//GetFirmwareVersionOfSubdevices();
@@ -4149,7 +4643,7 @@ void sunapi_manager::GetDataForFirmwareVersionInfo()
 
 		if (!result)
 		{
-			printf("failed to get GetFirmwareVersionOfSubdevices ... ");
+			printf("failed to get GetFirmwareVersionOfSubdevices ... \n");
 		}
 	}
 #else
@@ -4159,8 +4653,11 @@ void sunapi_manager::GetDataForFirmwareVersionInfo()
 
 	if (!result)
 	{
-		printf("failed to get GetFirmwareVersionOfSubdevices ... ");
+		printf("\n ### failed to get GetFirmwareVersionOfSubdevices ... !!!!!!!!!!\n");
 	}
+
+	return result;
+	
 #endif
 }
 
@@ -4175,15 +4672,40 @@ int sunapi_manager::ThreadStartGetLatestFirmwareVersionFromURL()
 
 void sunapi_manager::thread_function_for_get_latestFirmwareVersion()
 {
-	// Update Firmware version info
-	std::string update_FW_Info_url = "https://update.websamsung.net/FW/Update_FW_Info3.txt";
-	int result = GetLatestFirmwareVersionFromURL(update_FW_Info_url);
-	if (!result)
+	bool result;
+
+	time_t update_time = time(NULL);
+
+	int wait_time_for_firmwareversion = 600;  // 2021.11.03 hwanjang - 600 sec
+
+	//if ((update_time - g_UpdateTimeForFirmwareVersionOfSubdevices) > GET_WAIT_TIMEOUT)
+	if ((update_time - g_UpdateTimeForlatestFirmwareVersion) > wait_time_for_firmwareversion)
 	{
-		printf("GetLatestFirmwareVersionFromURL() -> fail to get latest version ... \n");
+		g_UpdateTimeForlatestFirmwareVersion = time(NULL);
+
+		// Update Firmware version info
+		std::string update_FW_Info_url = "https://update.websamsung.net/FW/Update_FW_Info3.txt";
+		int result = GetLatestFirmwareVersionFromURL(update_FW_Info_url);
+		if (!result)
+		{
+			printf("GetLatestFirmwareVersionFromURL() -> fail to get latest version ... \n");
+
+			g_UpdateTimeForlatestFirmwareVersion = 0;  // if failed to update ... reset 0
+		}
+	}
+	else
+	{
+		printf("[hwanjang] thread_function_for_get_latestFirmwareVersion() ->  time : %lld ... so skip !!!\n",
+			(update_time - g_UpdateTimeForlatestFirmwareVersion));
 	}
 
 	result = GetLatestFirmwareVersionFromFile(FIRMWARE_INFO_FILE);
+
+	if (result == false)
+	{
+		printf("[hwanjang] thread_function_for_get_latestFirmwareVersion() ->  failed to get GetLatestFirmwareVersionFromFile() ...\n");
+		g_UpdateTimeForlatestFirmwareVersion = 0; // if failed to update ... reset 0
+	}
 	
 }
 
@@ -4229,9 +4751,10 @@ int sunapi_manager::ThreadStartSendResponseForFirmwareView(const std::string str
 void sunapi_manager::thread_function_for_send_response_for_firmwareVersion(int maxChannel, const std::string strTopic, 
 			std::string strCommand, std::string strType, std::string strView, std::string strTid)
 {
-	printf("\n thread_function_for_send_response_for_firmwareVersion() -> Start .... \n ");
-
 	time_t start_t = time(NULL);
+
+	printf("\n thread_function_for_send_response_for_firmwareVersion() -> Start .... time : %lld\n", start_t);
+
 	time_t quit_t;
 
 	int i = 0;
@@ -4239,16 +4762,12 @@ void sunapi_manager::thread_function_for_send_response_for_firmwareVersion(int m
 	{
 		for (i = 0; i < maxChannel; i++)
 		{
-			if ((g_SubDevice_info_[i].CheckConnectionStatus == 1)     // connection
-				|| (g_SubDevice_info_[i].CheckConnectionStatus == 3)) // timeout
+			if ((g_Worker_Firmware_Ver_info_[i].fw_update_check != true)
+				|| (g_Worker_Firmware_Ver_info_[i].last_fw_update_check != true))
 			{
-				if ((g_Worker_Firmware_Ver_info_[i].fw_update_check != true)
-					|| (g_Worker_Firmware_Ver_info_[i].last_fw_update_check != true))
-				{
-					printf("thread_function_for_send_response_for_firmwareVersion() -> i : %d  , fw_update_check : %d , last_fw_update_check : %d --> break !!!\n", 
-								i , g_Worker_Firmware_Ver_info_[i].fw_update_check , g_Worker_Firmware_Ver_info_[i].last_fw_update_check);
-					break;
-				}
+				printf("thread_function_for_send_response_for_firmwareVersion() -> i : %d  , fw_update_check : %d , last_fw_update_check : %d --> break !!!\n", 
+							i , g_Worker_Firmware_Ver_info_[i].fw_update_check , g_Worker_Firmware_Ver_info_[i].last_fw_update_check);
+				break;
 			}
 			
 			if ((maxChannel - 1) == i)
@@ -4263,6 +4782,11 @@ void sunapi_manager::thread_function_for_send_response_for_firmwareVersion(int m
 				SendResponseForFirmwareView(strTopic, strCommand, strType, strView, strTid);
 
 				Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
+
+				quit_t = time(NULL);
+				
+				std::cout << "thread_function_for_send_response_for_firmwareVersion() -> End ... time : " << (long int)quit_t << " , diff : "
+					<< (long int)(quit_t - g_StartTimeForFirmwareVersionView) << std::endl;
 
 				return;
 			}
@@ -4288,14 +4812,12 @@ void sunapi_manager::thread_function_for_send_response_for_firmwareVersion(int m
 			Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
 
 			std::cout << "thread_function_for_send_response_for_firmwareVersion() -> End ... time : " << (long int)quit_t << " , diff : "
-				<< (long int)(quit_t - start_t) << std::endl;
+				<< (long int)(quit_t - g_StartTimeForFirmwareVersionView) << std::endl;
 
 			return;
 		}
 
 		sleep_for(std::chrono::milliseconds(1));
-	}
-}
 	}
 }
 

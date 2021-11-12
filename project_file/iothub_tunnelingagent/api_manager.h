@@ -20,6 +20,8 @@ class APIManager {
 
 		void RegisterObserverForHbirdManager(IAPIManagerObserver* callback);
 
+		void init(const std::string strIP, const std::string strPW, int port);
+
 		bool HttpTunnelingCommand(const std::string& strTopic, json_t* json_root);
 
 		int ThreadStartForUpdatingConfigData(int interval);
@@ -28,7 +30,7 @@ class APIManager {
 
 	private:
 
-		int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
+		//int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
 		CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult);		
 
@@ -44,12 +46,10 @@ class APIManager {
 
 		IAPIManagerObserver* observerForHbirdManager;
 
-		std::string gPrivate_id;
-		std::string gPrivate_pw;
-		std::string gPrivate_port;
-
 		std::string gStrDeviceIP;
 		std::string gStrDevicePW;
+		int gGatewayHttpsPort;
+		
 
 		std::string gStunURI;
 

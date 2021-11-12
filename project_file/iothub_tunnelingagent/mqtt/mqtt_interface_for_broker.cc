@@ -54,24 +54,21 @@ const int       WILLING_MSG_QOS = 1;
 
 IMQTTManagerSink_for_broker* HummingbirdMqttInterface_for_broker::g_MQTTManagerinstance = nullptr;
 
-HummingbirdMqttInterface_for_broker::HummingbirdMqttInterface_for_broker(
-	const std::string& server_address, const std::string& app_id, const std::string& app_key)
+HummingbirdMqttInterface_for_broker::HummingbirdMqttInterface_for_broker(const std::string& server_address,
+                    const std::string& group_id, const std::string& app_id, const std::string& app_key)
   : //client(server_address, id),
     g_client(server_address, app_id),
     g_connopts(app_id, app_key)
 {
+    g_group_id_ = group_id;
     g_app_id_ = app_id;
     g_app_key_ = app_key;
 
-    printf("[hwanjang] HummingbirdMqttInterface_for_broker_for_broker Create -> g_app_id_ : %s, g_app_key_ : %s\n", g_app_id_.c_str(), g_app_key_.c_str());
- 
     connection_status = false;
 }
 
 HummingbirdMqttInterface_for_broker::~HummingbirdMqttInterface_for_broker()
 {
-printf("[hwanjang] HummingbirdMqttInterface_for_broker::~HummingbirdMqttInterface_for_broker() -> Destructor !!!\n");
-
   if(_bird != NULL)
 	delete _bird;
 }
@@ -108,14 +105,14 @@ bool HummingbirdMqttInterface_for_broker::find_command(std::string topic, std::s
 
 void HummingbirdMqttInterface_for_broker::MQTT_Init(const std::string& path)
 {
-	printf("*** HummingbirdMqttInterface_for_broker::MQTT_Init() --->\n");
+	//printf("*** HummingbirdMqttInterface_for_broker::MQTT_Init() --->\n");
 
     g_connopts.set_connect_timeout(5);
 
     g_connopts.set_keep_alive_interval(90); // keep alive 30 -> 90
     //connopts.set_keep_alive_interval(30);
 
-    g_connopts.set_clean_session(true);
+    g_connopts.set_clean_session(false);
 
     mqtt::ssl_options sslopts;
 
@@ -149,14 +146,14 @@ void HummingbirdMqttInterface_for_broker::MQTT_Init(const std::string& path)
     g_connopts.set_will(will);
     g_connopts.set_ssl(sslopts);
 
-#if 1 // debug
+#if 0 // debug
 printf("hub id : %s\n", g_connopts.get_user_name().c_str());
 printf("hub pw : %s\n", g_connopts.get_password().c_str());
 printf("willing_topic : %s\n", willing_topic.c_str());
 printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
 #endif
 
-	_bird = new hummingbird_for_broker(&g_client, g_connopts, g_app_id_);
+	_bird = new hummingbird_for_broker(&g_client, g_connopts, g_group_id_, g_app_id_);
 
     // target app id : serviceTray    
     std::string target_app_id = "serviceTray";
@@ -169,40 +166,22 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
 	_bird->add_topic(0, pub_topic_connect);
 	pub_topic_connect->RegisterObserver(this);
 
-    // req - message
-    hummingbird_topic_for_broker* pub_req_message = new hummingbird_topic_pub_ReqMessage_for_broker(&g_client, target_app_id);
-    _bird->add_topic(0, pub_req_message);
-    pub_req_message->RegisterObserver(this);
-
-    // res - message
-    hummingbird_topic_for_broker* pub_res_message = new hummingbird_topic_pub_ResMessage_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(0, pub_res_message);
-    pub_res_message->RegisterObserver(this);
-
-    // req - command
-    hummingbird_topic_for_broker* pub_req_command = new hummingbird_topic_pub_ReqCommand_for_broker(&g_client, target_app_id);
-    _bird->add_topic(0, pub_req_command);
-    pub_req_command->RegisterObserver(this);
-
-    // res - command
-    hummingbird_topic_for_broker* pub_res_command = new hummingbird_topic_pub_ResCommand_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(0, pub_res_command);
-    pub_res_command->RegisterObserver(this);
 #else
+
     // connection
-    hummingbird_topic_for_broker* pub_topic_connect = new hummingbird_topic_pub_Connect_for_broker(&g_client, g_app_id_);
+    hummingbird_topic_for_broker* pub_topic_connect = new hummingbird_topic_pub_Connect_for_broker(&g_client, g_group_id_, target_app_id, g_app_id_);
     _bird->add_topic(0, pub_topic_connect);
     pub_topic_connect->RegisterObserver(this);
 
-    // res - message
-    hummingbird_topic_for_broker* pub_res_message = new hummingbird_topic_pub_ResMessage_for_broker(&g_client, target_app_id);
-    _bird->add_topic(0, pub_res_message);
-    pub_res_message->RegisterObserver(this);
+    // pub - message
+    hummingbird_topic_for_broker* pub_req_message = new hummingbird_topic_pub_Message_for_broker(&g_client, g_group_id_, target_app_id, g_app_id_);
+    _bird->add_topic(0, pub_req_message);
+    pub_req_message->RegisterObserver(this);
 
-    // res - command
-    hummingbird_topic_for_broker* pub_res_command = new hummingbird_topic_pub_ResCommand_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(0, pub_res_command);
-    pub_res_command->RegisterObserver(this);
+    // pub - command
+    hummingbird_topic_for_broker* pub_req_command = new hummingbird_topic_pub_Command_for_broker(&g_client, g_group_id_, target_app_id, g_app_id_);
+    _bird->add_topic(0, pub_req_command);
+    pub_req_command->RegisterObserver(this);
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -215,39 +194,25 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
 	sub_connect->RegisterObserver(this);
 #endif
 
-    // sub for req message
-    hummingbird_topic_for_broker* sub_req_message = new hummingbird_topic_sub_ReqMessage_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(1, sub_req_message);
-    sub_req_message->RegisterObserver(this);
-
-    // sub for res message
-    hummingbird_topic_for_broker* sub_res_message = new hummingbird_topic_sub_ResMessage_for_broker(&g_client, target_app_id);
-    _bird->add_topic(1, sub_res_message);
-    sub_res_message->RegisterObserver(this);
-
-	// sub for req Command
-    hummingbird_topic_for_broker* sub_req_command = new hummingbird_topic_sub_ReqCommand_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(1, sub_req_command);
-    sub_req_command->RegisterObserver(this);
-
-    // sub for res Command
-    hummingbird_topic_for_broker* sub_res_command = new hummingbird_topic_sub_ResCommand_for_broker(&g_client, target_app_id);
-    _bird->add_topic(1, sub_res_command);
-    sub_res_command->RegisterObserver(this);
-
 #else
-    // sub for req Command
-    hummingbird_topic_for_broker* sub_req_command = new hummingbird_topic_sub_ReqCommand_for_broker(&g_client, g_app_id_);
-    _bird->add_topic(1, sub_req_command);
-    sub_req_command->RegisterObserver(this);
+    // sub for message
+    hummingbird_topic_for_broker* sub_message = new hummingbird_topic_sub_Message_for_broker(&g_client, g_group_id_, g_app_id_, "+");
+    _bird->add_topic(1, sub_message);
+    sub_message->RegisterObserver(this);
+
+    // sub for Command
+    hummingbird_topic_for_broker* sub_command = new hummingbird_topic_sub_Command_for_broker(&g_client, g_group_id_, g_app_id_, "+");
+    _bird->add_topic(1, sub_command);
+    sub_command->RegisterObserver(this);
 #endif
 
-    SetDeviceStatus("HummingbirdMqttInterface_for_broker::MQTT_Init() ... Agent Start ... Device ON");
+    //SetDeviceStatus("HummingbirdMqttInterface_for_broker::MQTT_Init() ... Agent Start ... Device ON");
 }
 
 int HummingbirdMqttInterface_for_broker::MQTT_Start()
 {
-printf("*** HummingbirdMqttInterface_for_broker::MQTT_Start() --->\n");
+    //printf("*** [hwanjang] HummingbirdMqttInterface_for_broker::MQTT_Start() --->\n");
+
     // Start the connection.
     try {
 		std::cout << "Connecting to the MQTT server...\n" << std::flush;
@@ -266,7 +231,7 @@ int HummingbirdMqttInterface_for_broker::MQTT_Stop()
 //printf("*** HummingbirdMqttInterface_for_broker::MQTT_Stop() --->\n");
 
     try {
-		std::cout << "\nDisconnecting from the MQTT server...\n" << std::flush;
+		std::cout << "\n[hwanjang] HummingbirdMqttInterface_for_broker::MQTT_Stop() -> Disconnecting from the MQTT server...\n" << std::flush;
         _bird->disconnect();
         std::cout << "OK" << std::endl;
     }
@@ -479,7 +444,7 @@ void HummingbirdMqttInterface_for_broker::OnResponseCommandMessage(const std::st
 // 2018.01.22 hwanjang - add
 void HummingbirdMqttInterface_for_broker::OnConnectSuccess(void)
 {
-#if 1
+#if 0
 printf("[hwanjang] HummingbirdMqttInterface_for_broker::OnConnectSuccess() -> Start ...\n");
 #endif
 	connection_status = true;

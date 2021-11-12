@@ -42,9 +42,9 @@ printf("[hwanjang] hummingbird::connect() -> Start ..\n");
 #else	
 	cli_->set_callback(*this);
 	cli_->connect(connOpts_, nullptr, *this);
-	cout << "Waiting for the connection..." << endl;
 
-	//cout << "[hwanjang] hummingbird::connect() ->  ...OK" << endl;
+	std::cout << "[hwanjang] hummingbird::connect() -> Waiting for the connection..." << endl;
+
 #endif
 }    
 
@@ -57,7 +57,7 @@ int hummingbird::get_pub_topic_instance(string topic)
 	int count = pub_topic_list.size();
 	for (int i=0; i<count; i++){
 		if(pub_topic_list.at(i)->get_topic() == topic){
-			//cout << "get_pub_topic_instance : "<<topic << endl;
+			//std::cout << "get_pub_topic_instance : "<<topic << endl;
 			return i;
 		}
 	}
@@ -69,7 +69,7 @@ int hummingbird::get_sub_topic_instance(string topic)
 	int count = sub_topic_list.size();
 	for (int i=0; i<count; i++){
 		if(sub_topic_list.at(i)->get_topic() == topic){
-			//cout << "get_sub_topic_instance : "<< topic << " has been found !!!" << endl;
+			//std::cout << "get_sub_topic_instance : "<< topic << " has been found !!!" << endl;
 			return i;
 		}
 	}
@@ -96,7 +96,7 @@ printf("[hwanjang] get_pub_topic : %s\n", (pub_topic_list.at(i)->get_topic()).c_
 printf("[hwanjang] topic : %s\n", topic.c_str());
 #endif
 		if(pub_topic_list.at(i)->get_topic() == topic){
-			//cout << "get_pub_topc : "<<topic << endl;
+			//std::cout << "get_pub_topc : "<<topic << endl;
 
             return pub_topic_list.at(i);
         }
@@ -163,8 +163,9 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
     else
     {   
 		printf("[hwanjang] --> exit @@@@@@@@@@@@ \n");
-        exit(0); // program exit 
-        // for test
+        //exit(0); // program exit 
+
+		// for test
         //sec = (rand() % 10) + 1;
         //printf("[hwanjang] --> do not exit .... reconnect after %d sec ...\n", sec);
     }   
@@ -175,7 +176,7 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 		//cli_->connect(connOpts_, nullptr, *this);
 #if 1
 		cli_->connect(connOpts_, nullptr, *this);
-		cout << "Waiting for the reconnection..." << endl;       
+		std::cout << "[hwanjang] hummingbird::reconnect() -> Waiting for the reconnection..." << endl;       
 #else	
 		mqtt::token_ptr conntok = cli_->reconnect();
 		cout << "Waiting for the reconnection..." << endl;
@@ -189,6 +190,7 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
         std::cerr << "Error: " << exc.what() << std::endl;
         exit(1);
     }
-    printf("\n[hwanjang] reconnect() --> end !!\n\n");
+
+    //printf("\n[hwanjang] reconnect() --> end !!\n\n");
 }
 

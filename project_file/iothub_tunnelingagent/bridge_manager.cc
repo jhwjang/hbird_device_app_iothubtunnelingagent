@@ -12,12 +12,7 @@
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
 
-#define USER_ACCESS_TOKEN "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJodHd1LWI0MjAyMTUyLWJjZTYtNGI2MS1iNmYyLTBmOWE0YWQ1ZjcxMiIsImxvY2F0aW9uIjoidXMtd2VzdC0xIiwidXNlclN0YXR1cyI6InZlcmlmaWVkIiwidHNpIjoiMDk2MTc2ODAtN2I5Mi00MGExLTkxYWUtNTU2OTEwNDRmNTkzIiwic2NvcGUiOiJkZXZpY2UuaHR3ZDAwZDhjYjhhZjY1Mzc4Lm93bmVyIiwiaWF0IjoxNjIxMjQ1MTYyLCJleHAiOjE2MjEyNTIzNjEsImlzcyI6Imh0dzIuaGJpcmQtaW90LmNvbSIsImp0aSI6ImJkMzcyMjY1LWYxYzYtNDE4OS1iM2VmLTE4NmRlYTUxZTRhOSJ9.Z14Ot0SDGuSJVeiCFoEr-FrBk5JFHXyXnYFvnPYgwV3MxWBb8T9-KyKIYbtVMRJoEY9o4vyIQp7SGzcU7g18C0-B2Gmc3YmwDdDJWftXBtt7H-Pf6_bkNYGVUjfZBUd_hC-zneNEW_pexW3Gz6ZUJp3UnhjC0YMh591WM8alA7L5mwYIqMqrRbsRt3LFV4W5rCnKqUm7fRgoLkc9LBpTXfly3Q1JqYHGeCdNB_34h_y8oPVh-FZPBQyRxLTAt9uxwya_p9u-Tvs8FvLoDBZEDbz65p3wEKiyp7hp_gRHwoB8yBgIam6Qb9vwG4D42YVOVUGMp0pX-MkkiYcrorJdqQ"
-
-
 BridgeManager::BridgeManager() {
-
-	printf("[hwanjang] BridgeManager -> constructor !!!\n");
 
 	mMQTT_manager_ = nullptr;
 	mAPI_manager_ = nullptr;
@@ -28,7 +23,6 @@ BridgeManager::BridgeManager() {
 }
 
 BridgeManager::~BridgeManager() {
-	printf("[hwanjang] BridgeManager::~BridgeManager() -> Destructor !!!\n");
 
 #if 0
 	if (mConfig_manager_)
@@ -55,92 +49,43 @@ int BridgeManager::file_exit(std::string& filename)
 	return 0;
 }
 
-void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort)
+#ifndef USE_ARGV_JSON
+void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort, std::string strIP, std::string strPW)
 {
 	bool result = false;
 
 	std::string device_id = strDeviceID;
 	std::string	device_key = strDeviceKey;
 
+	std::string strGatewayIP, strGatewayPW;
+
+	strGatewayIP = strIP;
+	strGatewayPW = strPW;
+
 	//mAPI_manager_ = new APIManager();
 	mAPI_manager_ = std::make_unique<APIManager>();
 	mAPI_manager_->RegisterObserverForHbirdManager(this);
 
+	mAPI_manager_->init(strGatewayIP, strGatewayPW);
+
 #if 1  // for dashboard
 	// using std::unique_ptr
-	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id, nWebPort);
+	mSUNAPI_manager_ = std::make_unique<sunapi_manager>();
 	mSUNAPI_manager_->RegisterObserverForHbirdManager(this);
 
 	//gMax_Channel = mSUNAPI_manager_->GetMaxChannel();
 	//printf("BridgeManager::StartBridgeManager() -> gMax_Channel : %d\n", gMax_Channel);
 
-	result =  mSUNAPI_manager_->SunapiManagerInit();
+	result =  mSUNAPI_manager_->SunapiManagerInit(strGatewayIP, strGatewayPW, device_id, nWebPort);
 
 	if (!result)
 	{
 		printf("BridgeManager::StartBridgeManager() -> failed to SunapiManagerInit ...  \n");
 	}
 
-	// Test
-	//mSUNAPI_manager_->TestDashboardView();
-	//mSUNAPI_manager_->TestDeviceInfoView();
-	//mSUNAPI_manager_->TestFirmwareVersionInfoView();
 #endif
 
-
-#if 0 // for test
-
-	if (strDeviceID.find("file") != std::string::npos)
-	{
-		std::string user_token = USER_ACCESS_TOKEN;  // temp
-		std::string address;
-
-		user_token.clear(); // for test --> empty? -> read user_token.cfg
-
-		//mConfig_manager_ = new ConfigManager();
-		mConfig_manager_ = std::make_unique<ConfigManager>();
-		result = mConfig_manager_->GetConfigModelDevice(user_token, &address, &device_id, &device_key);
-			
-		if (!result)
-		{
-			printf("[hwanjang] *** Error !!! config server -> failed to get MQTT Server address !! --> Set localhost ...\n");
-
-			mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-		}
-		else
-		{
-			if (address.empty())
-			{
-				mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-			}
-			else
-			{
-				if ((address.find("localhost") != std::string::npos) || (address.find("127.0.0.1") != std::string::npos))
-				{
-					mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-				}
-				else
-				{
-#if 1	// connect to bridge app
-					mMqtt_server_ = "tcp://localhost:2883";
-#else	// connect to MQTT Server directly for test.
-					// Start to connect to MQTT Server 
-					std::string server_address = "ssl://";
-					server_address.append(address);
-
-					mMqtt_server_ = server_address;
-					//mMqtt_server_ = "tcp://192.168.11.2:2883";
-#endif
-				}
-			}
-		}
-	}
-	else
-		mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-
-#else
 	mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
-#endif
 
 	std::cout << "BridgeManager::StartBridgeManager() -> Connect to MQTT Server ... " << mMqtt_server_ << std::endl;
 
@@ -152,24 +97,75 @@ void BridgeManager::StartBridgeManager(std::string strDeviceID, std::string strD
 
 	// MQTT connect
 	Start_MQTT();
+}
+#else
+void BridgeManager::StartBridgeManager(Setting_Infos* infos)
+{
+	Setting_Infos _setting_infos;
 
-#if 0  // for dashboard
+	memcpy(&_setting_infos, infos, sizeof(Setting_Infos));
+	memcpy(&_setting_infos.System_info, &infos->System_info, sizeof(_setting_infos.System_info));
+
+#ifdef HWANJANG_DEBUG
+	printf("[hwanjang] StartBridgeManager() ->  %s , %d \n", _setting_infos.deviceId.c_str(), _setting_infos.System_info.https_port);
+#endif
+
+	bool result = false;
+
+	std::string strGatewayIP, strGatewayPW;
+	int gatewayPort;
+
+	strGatewayIP = _setting_infos.System_info.gatewayIPAddress;
+	strGatewayPW = _setting_infos.System_info.gatewayId;
+	strGatewayPW.append(":");
+	strGatewayPW.append(_setting_infos.System_info.gatewayPassword);
+	gatewayPort = _setting_infos.System_info.https_port;
+
+
+	//mAPI_manager_ = new APIManager();
+	mAPI_manager_ = std::make_unique<APIManager>();
+	mAPI_manager_->RegisterObserverForHbirdManager(this);
+
+	mAPI_manager_->init(strGatewayIP, strGatewayPW, gatewayPort);
+
+#if 1  // for dashboard
 	// using std::unique_ptr
-	mSUNAPI_manager_ = std::make_unique<sunapi_manager>(device_id, nWebPort);
+	mSUNAPI_manager_ = std::make_unique<sunapi_manager>();
 	mSUNAPI_manager_->RegisterObserverForHbirdManager(this);
 
 	//gMax_Channel = mSUNAPI_manager_->GetMaxChannel();
 	//printf("BridgeManager::StartBridgeManager() -> gMax_Channel : %d\n", gMax_Channel);
 
-	mSUNAPI_manager_->SunapiManagerInit();
+	//result = mSUNAPI_manager_->SunapiManagerInit(strGatewayIP, strGatewayPW, device_id, nWebPort, strMac);
 
-	// Test
-	//mSUNAPI_manager_->TestDashboardView();
-	//mSUNAPI_manager_->TestDeviceInfoView();
-	//mSUNAPI_manager_->TestFirmwareVersionInfoView();
+	result = mSUNAPI_manager_->SunapiManagerInit(&_setting_infos);
+
+	if (!result)
+	{
+		printf("BridgeManager::StartBridgeManager() -> failed to SunapiManagerInit ...  \n");
+	}
+
 #endif
 
+	mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
+
+#ifdef HWANJANG_DEBUG
+	std::cout << "[hwanjang] BridgeManager::StartBridgeManager() -> Connect to MQTT Server ... " << mMqtt_server_ << std::endl;
+#endif
+
+	std::string device_id = _setting_infos.deviceId;
+	std::string	device_key = _setting_infos.deviceKey;
+
+	if (!Init_MQTT(device_id, device_key))
+	{
+		printf("[hwanjang] * * *Error !!! BridgeManagerStart() ->  server-> MQTT_Init is failed !! -- > exit !!!\n");
+		exit(1);
+	}
+
+	// MQTT connect
+	Start_MQTT();
 }
+#endif
 
 bool BridgeManager::Init_MQTT(std::string deviceID, std::string devicePW)
 {
@@ -279,17 +275,23 @@ void BridgeManager::thread_function_for_MQTTMsg(mqtt::const_message_ptr mqttMsg)
 
 	if (topic.find("command") != std::string::npos)
 	{
+#ifdef HWANJANG_DEBUG
 		printf("Received command ...\n");
+#endif
 		process_command(topic, mqttMsg);
 	}
 	else if (topic.find("sunapi") != std::string::npos)
 	{
+#ifdef HWANJANG_DEBUG
 		printf("Received SUNAPI tunneling ...\n");
+#endif
 		process_SUNAPITunneling(topic, mqttMsg);
 	}
 	else if (topic.find("http") != std::string::npos)
 	{
+#ifdef HWANJANG_DEBUG
 		printf("Received HTTP tunneling ...\n");
+#endif
 		process_HttpTunneling(topic, mqttMsg);
 	}
 	else
@@ -302,8 +304,9 @@ void BridgeManager::process_command(const std::string& strTopic, mqtt::const_mes
 {
 	std::string strPayload = mqttMsg->get_payload_str().c_str();
 
+#ifdef HWANJANG_DEBUG
 	printf("process_command() -> receive command : %s\n", strPayload.c_str());
-
+#endif
 
 	if (strPayload.find("checkPassword") != std::string::npos)
 		//if (strncmp("checkPassword", charCommand, 9) == 0)
@@ -344,7 +347,9 @@ void BridgeManager::process_SUNAPITunneling(const std::string& strTopic, mqtt::c
 	json_error_t error_check;
 	json_t* json_root = json_loads(mqttMsg->get_payload_str().c_str(), 0, &error_check);
 
+#ifdef HWANJANG_DEBUG
 	cout << "process_SUNAPITunneling() -> " << json_dumps(json_root, 0) << endl;
+#endif
 
 	bool result;
 
@@ -364,8 +369,9 @@ void BridgeManager::process_HttpTunneling(const std::string& strTopic, mqtt::con
 	json_error_t error_check;
 	json_t* json_root = json_loads(mqttMsg->get_payload_str().c_str(), 0, &error_check);
 
+#ifdef HWANJANG_DEBUG
 	cout << "process_tunneling() -> " << json_dumps(json_root, 0) << endl;
-
+#endif
 	int result;
 
 	if(json_root)
@@ -406,7 +412,7 @@ void BridgeManager::SendResponseToPeerForTunneling(const std::string& topic, con
 
 void BridgeManager::SendResponseForDashboard(const std::string& topic, const std::string& message)
 {
-#if 1 // debug
+#if 0 // debug
 	printf("** HummingbirdManager::SendResponseForDashboard() -> Start !!\n");
 	printf("--> topic : %s\n", topic.c_str());
 	printf("message : \n%s\n", message.c_str());

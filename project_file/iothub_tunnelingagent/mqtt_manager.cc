@@ -8,8 +8,10 @@ MQTTManager::MQTTManager(std::string address,
 	 gDeviceID(id),
 	 gDevicePW(pw)	 
 {
-	printf("Create MQTTManager , ID : %s , PW : %s\n ", gDeviceID.c_str(), gDevicePW.c_str());
-	printf("gMQTTServerAddress : %s\n", gMQTTServerAddress.c_str());
+#if 0 // for debug
+	printf("MQTTManager() Create MQTTManager , ID : %s , PW : %s\n ", gDeviceID.c_str(), gDevicePW.c_str());
+	printf("MQTTManager() gMQTTServerAddress : %s\n", gMQTTServerAddress.c_str());
+#endif
 
 	g_MQTT_interface_Handler = nullptr;
 	observerForHbirdManager = nullptr;
@@ -60,8 +62,11 @@ void MQTTManager::SendMessageToClient(std::string topic, std::string message, in
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, std::string message)
 {
+#if 0
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
 	printf("MQTTManager::OnResponseCommandMessage() : message : %s\n", message.c_str());
+#endif
+
 	if (g_MQTT_interface_Handler != nullptr)
 	{
 		g_MQTT_interface_Handler->OnResponseCommandMessage(topic, message);
@@ -70,7 +75,9 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, std::string messag
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payload, int size)
 {
+#if 0
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
+#endif
 
 	if (g_MQTT_interface_Handler != nullptr)
 	{
@@ -84,8 +91,13 @@ void MQTTManager::ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg)
 {
 	std::string topic = mqttMsg->get_topic();
 	std::string message = mqttMsg->to_string();
-	printf("MQTTManager::ReceiveMessageFromPeer() : topic : %s\n", topic.c_str());
-	printf("MQTTManager::ReceiveMessageFromPeer() : message : %s\n", message.c_str());
+
+#if 1 // for debug
+	time_t now = time(NULL);
+	printf("[hwanjang] MQTTManager::ReceiveMessageFromPeer() -> time : %lld\n", now);
+	printf("[hwanjang] topic : %s\n", topic.c_str());
+	printf("[hwanjang] message : %s\n", message.c_str());
+#endif
 
 	if (observerForHbirdManager != nullptr)
 	{

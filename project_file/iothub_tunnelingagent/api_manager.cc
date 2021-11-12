@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <thread>
 #include <fstream>
 #include <chrono>
@@ -20,7 +20,7 @@ using std::this_thread::sleep_for;
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
 //#define CURL_TIMEOUT 10 
-#define CURL_TIMEOUT 5
+#define CURL_TIMEOUT 0  // for getting info ...
 #define CURL_CONNECTION_TIMEOUT 3  
 
 #if 0
@@ -53,24 +53,6 @@ APIManager::APIManager(){
 	APIHandler = this;
 
 	observerForHbirdManager = nullptr;
-
-
-	std::string strIP, strPW;
-
-	bool result = GetDeviceIP_PW(&strIP, &strPW);
-
-	if ((result != true) || strIP.empty() || strPW.empty())
-	{
-		gStrDeviceIP = "127.0.0.1";
-		gStrDevicePW = "admin:5tkatjd!";
-	}
-	else
-	{
-		gStrDeviceIP = strIP;
-		gStrDevicePW = strPW;
-	}
-
-	printf("APIManager() -> gStrDeviceIP : %s , gStrDevicePW : %s\n", gStrDeviceIP.c_str(), gStrDevicePW.c_str());
 }
 
 APIManager::~APIManager() {
@@ -83,7 +65,49 @@ void APIManager::RegisterObserverForHbirdManager(IAPIManagerObserver* callback)
 	observerForHbirdManager = callback;
 }
 
-#if 1  // test
+void APIManager::init(const std::string strIP, const std::string strPW, int port)
+{
+#if 0
+	std::string strGatewayIP, strGatewayPW;
+
+	bool result = GetDeviceIP_PW(&strGatewayIP, &strGatewayPW);
+
+	if ((result != true) || strIP.empty() || strPW.empty())
+	{
+		gStrDeviceIP = "127.0.0.1";
+		gStrDevicePW = "admin:5tkatjd!";
+	}
+	else
+	{
+		gStrDeviceIP = strIP;
+		gStrDevicePW = strPW;
+	}
+#else
+	if (strIP.empty())
+	{
+		gStrDeviceIP = "127.0.0.1";
+	}
+	else
+	{
+		gStrDeviceIP = strIP;
+	}
+
+	if (strPW.empty())
+	{
+		gStrDevicePW = "admin:000ppp[[[";
+	}
+	else
+	{
+		gStrDevicePW = strPW;
+	}
+
+	gGatewayHttpsPort = port;
+#endif
+
+	printf("APIManager() -> gStrDeviceIP : %s , gStrDevicePW : %s, https port : %d\n", gStrDeviceIP.c_str(), gStrDevicePW.c_str(), gGatewayHttpsPort);
+}
+
+#if 0  // test
 int APIManager::GetDeviceIP_PW(std::string* strIP, std::string* strPW)
 {
 	bool result = false;
@@ -450,12 +474,16 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 
 	strRepuestHost = gStrDeviceIP;
 
+#if 0
 	strRequestUrl = strProtocol;
 	strRequestUrl.append("://");
 	strRequestUrl.append(strRepuestHost);
 	strRequestUrl.append(":");
 	strRequestUrl.append(strRepuestPort);
 	strRequestUrl.append(strUrl);  // strUrl is equal to jmsg_path.asString()
+#else
+	strRequestUrl = "https://" + gStrDeviceIP + ":" + std::to_string(gGatewayHttpsPort) + strUrl;
+#endif
 
 	strUserPW = gStrDevicePW;
 
@@ -642,6 +670,24 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 
 		msgProtocolByte.insert(msgProtocolByte.end(), responseHeaderByte.begin(), responseHeaderByte.end());
 
+#if 0 // for debug
+		std::string strHeaderData(reinterpret_cast<const char*>(&msgProtocolByte[0]), msgProtocolByte.size());
+		printf("\n\n################################################################################################\n");
+		printf("[hwanjang] HttpTunnelingCommand() response ---> strHeaderData size: %d\n%s\n", strHeaderData.size() , strHeaderData.c_str());
+
+
+		FILE* Output_fp = nullptr;
+
+		if (0 != fopen_s(&Output_fp, "httpTunneling_header.txt", "w+b")) {
+			size_t writeSize = fwrite(&msgProtocolByte[0], sizeof(unsigned char), msgProtocolByte.size(), Output_fp);
+		}
+		else
+		{		
+			printf("error ... write httpTunneling_header.txt !!!\n");
+		}
+		
+#endif
+
 		// response body
 		//std::vector<byte> responseBodyByte(responseBody.length(), 0);
 		//std::copy(responseBody.begin(), responseBody.end(), responseBodyByte.begin());
@@ -649,11 +695,20 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 		//printf("responseBody.size : %d\n%s\n", responseBody.length(), responseBody.c_str());
 		//msgProtocolByte.insert(msgProtocolByte.end(), responseBodyByte.begin(), responseBodyByte.end());
 
+#if 1
 		// body
 		unsigned char* byteResponseBody = (unsigned char*)bodyChunk.memory;
 		// response body
 		std::vector<unsigned char> responseBodyByte(byteResponseBody, byteResponseBody + bodyChunk.size);
+		printf("responseBody.size : %lu\n", responseBodyByte.size());
+#else
+		unsigned char* byteResponseBody = (unsigned char*)bodyChunk.memory;
+		std::vector<unsigned char> responseBodyByte(bodyChunk.size, 0);
+		std::copy(&byteResponseBody[0], &byteResponseBody[bodyChunk.size-1], responseBodyByte.begin());
+		//std::copy_n(byteResponseBody, bodyChunk.size, responseBodyByte);
 
+		printf("responseBody.size : %lu\n", responseBodyByte.size());
+#endif
 		msgProtocolByte.insert(msgProtocolByte.end(), responseBodyByte.begin(), responseBodyByte.end());
 
 
@@ -695,7 +750,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	if (result)
 	{
-		printf("[hwanjang] Error !! HttpTunnelingCommand -> json root is wrong -> return  !!!\n");
+		printf("[hwanjang] Error !! SUNAPITunnelingCommand -> json root is wrong -> return  !!!\n");
 		return false;
 	}
 
@@ -761,10 +816,14 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	std::string strRepuest;
 
+#if 0
 	strRepuest = "http://";
 	strRepuest.append(gStrDeviceIP);
 	strRepuest.append(strUrl);  // strUrl is equal to jmsg_path.asString()
 	//strRepuest.append("/stw-cgi/system.cgi?msubmenu=deviceinfo&action=view");
+#else  // 21.11.02 change -> https
+	strRepuest = "https://" + gStrDeviceIP + ":" + std::to_string(gGatewayHttpsPort) + strUrl;
+#endif
 
 	printf("[hwanjang] SUNAPITunnelingCommand() -> Request : %s\n", strRepuest.c_str());
 
@@ -963,7 +1022,6 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	return true;
 }
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // for APIManagerObserverForAPIManager

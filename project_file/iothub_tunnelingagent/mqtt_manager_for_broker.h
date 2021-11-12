@@ -14,7 +14,7 @@ struct IMQTTManagerObserver_for_broker
 
 class MQTTManager_for_broker : public IMQTTManagerSink_for_broker {
     public:
-        MQTTManager_for_broker(std::string address,	std::string id, std::string pw);
+        MQTTManager_for_broker(std::string address, std::string broker_group_id, std::string id, std::string pw);
         ~MQTTManager_for_broker();
 
         void init(const std::string& path);
@@ -24,7 +24,7 @@ class MQTTManager_for_broker : public IMQTTManagerSink_for_broker {
 
         time_t getLastConnection_Time();
 
-        std::string create_pub_topic(std::string app_id, std::string topic_type);
+        std::string create_topic(std::string d_id, std::string s_id, std::string topic_type);
         std::string create_response_pub_topic(std::string topic);
 
         void SendMessageToApp(std::string target_id, std::string topic_type, std::string message);
@@ -43,6 +43,7 @@ class MQTTManager_for_broker : public IMQTTManagerSink_for_broker {
         IMQTTManagerObserver_for_broker* observerForHbirdManager;
 
         std::string gMQTTServerAddress;
+        std::string g_goup_id;
         std::string g_app_id_;
         std::string g_app_key_;
 

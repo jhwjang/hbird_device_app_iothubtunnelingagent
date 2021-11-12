@@ -50,7 +50,7 @@ class HummingbirdMqttInterface_for_broker
   : public hummingbird_topic_Observer_for_broker
 {
  public:
-	 HummingbirdMqttInterface_for_broker(const std::string& server_address, const std::string& app_id, const std::string& app_key);
+	 HummingbirdMqttInterface_for_broker(const std::string& server_address, const std::string& group_id, const std::string& app_id, const std::string& app_key);
 	~HummingbirdMqttInterface_for_broker();
 
 	void MQTT_Init(const std::string& path); // 2018.10.29 - add version
@@ -88,6 +88,7 @@ class HummingbirdMqttInterface_for_broker
 	bool find_subdeviceId(std::string topic, std::string* subDevice_id);
 	bool find_command(std::string topic, std::string* strCommand);
 
+	std::string g_group_id_;
 	std::string g_app_id_;
 	std::string g_app_key_;
 	

@@ -154,7 +154,7 @@ public:
 	// An action listener to display the result of actions.
 	action_listener subListener_;
 
-	std::string create_topic(const std::string app_id, const std::string topic);
+	std::string create_topic(const std::string group_id, const std::string target_id, const std::string source_id, const std::string topic);
 
 	time_t lastConnectionTime;
 
@@ -176,13 +176,15 @@ public:
 	// This will initiate the attempt to manually reconnect.
 	void connection_lost(const std::string& cause) override;	
 
+	bool find_sourceId(std::string topic, std::string* source_id);
+
 	// Callback for when a message arrives.
 	void message_arrived(mqtt::const_message_ptr msg) override;
 
 	void delivery_complete(mqtt::delivery_token_ptr token) override {};
 
 public:
-	hummingbird_for_broker(mqtt::async_client* cli,mqtt::connect_options& connOpts, const std::string hub_id);
+	hummingbird_for_broker(mqtt::async_client* cli,mqtt::connect_options& connOpts, const std::string group_id, const std::string app_id);
 
 	void connect();
 	void disconnect();
@@ -201,6 +203,7 @@ private:
 	bool gHummingbirdStart;
 	bool g_conn_status;
 
+	std::string g_group_id_;
 	std::string g_app_id_;
 	std::string g_presence_str;
 

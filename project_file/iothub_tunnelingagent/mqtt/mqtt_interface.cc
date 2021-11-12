@@ -63,16 +63,12 @@ HummingbirdMqttInterface::HummingbirdMqttInterface(
     
   hub_id_ = id;  
   hub_pw_ = pw;
-
-  printf("[hwanjang] HummingbirdMqttInterface Create -> hub id : %s, pw : %s\n", hub_id_.c_str(), hub_pw_.c_str());
- 
+   
   connection_status = false;
 }
 
 HummingbirdMqttInterface::~HummingbirdMqttInterface()
 {
-printf("[hwanjang] HummingbirdMqttInterface::~HummingbirdMqttInterface() -> Destructor !!!\n");
-
   if(_bird != NULL)
 	delete _bird;
 }
@@ -208,8 +204,6 @@ int HummingbirdMqttInterface::create_topic(const std::string& topic)
 
 void HummingbirdMqttInterface::MQTT_Init(const std::string& path)
 {
-	printf("*** HummingbirdMqttInterface::MQTT_Init() --->\n");
-
     connopts.set_connect_timeout(5);
 
     connopts.set_keep_alive_interval(90); // keep alive 30 -> 90
@@ -245,7 +239,7 @@ void HummingbirdMqttInterface::MQTT_Init(const std::string& path)
     //connopts.set_will(will);  // last will message
     connopts.set_ssl(sslopts);
 
-#if 1 // debug
+#if 0 // debug
 printf("hub id : %s\n", connopts.get_user_name().c_str());
 printf("hub pw : %s\n", connopts.get_password().c_str());
 printf("willing_topic : %s\n", willing_topic.c_str());
@@ -284,15 +278,16 @@ printf("willingMsg :\n%s\n", LWT_PAYLOAD.c_str());
     _bird->add_topic(1, sub_HttpTunneling);
     sub_HttpTunneling->RegisterObserver(this);
 
-    SetDeviceStatus("HummingbirdMqttInterface::MQTT_Init() ... Agent Start ... Device ON");
+    //SetDeviceStatus("HummingbirdMqttInterface::MQTT_Init() ... Agent Start ... Device ON");
 }
 
 int HummingbirdMqttInterface::MQTT_Start()
 {
-printf("*** HummingbirdMqttInterface::MQTT_Start() --->\n");
+    //printf("*** HummingbirdMqttInterface::MQTT_Start() --->\n");
+    // 
     // Start the connection.
     try {
-		std::cout << "Connecting to the MQTT server...\n" << std::flush;
+		std::cout << "[hwanjang] HummingbirdMqttInterface::MQTT_Start() -> Connecting to the MQTT server...\n" << std::flush;
         _bird->connect();		
     }
     catch (const mqtt::exception&) {
@@ -308,7 +303,7 @@ int HummingbirdMqttInterface::MQTT_Stop()
 //printf("*** HummingbirdMqttInterface::MQTT_Stop() --->\n");
 
     try {
-		std::cout << "\nDisconnecting from the MQTT server...\n" << std::flush;
+		std::cout << "\n[hwanjang] HummingbirdMqttInterface::MQTT_Stop() -> Disconnecting from the MQTT server...\n" << std::flush;
         _bird->disconnect();
         std::cout << "OK" << std::endl;
     }
@@ -401,11 +396,9 @@ void HummingbirdMqttInterface::OnReceiveTopicMessage(mqtt::const_message_ptr mqt
 #endif
 
 #if 0
-    struct timespec tspec;
-    clock_gettime(CLOCK_REALTIME, &tspec);
-    printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time -> tv_sec : %lld, tv_nsec : %lld\n", 
-                (long long int)tspec.tv_sec, (long long int)tspec.tv_nsec);
-
+    time_t now = time(NULL);
+    printf("[hwanjang] HummingbirdMqttInterface::OnReceiveTopicMessage(), time : %lld\n", now);
+  
     //printf("--> subDeviceId : %s\nuser : %s\ntopic: %s\n", subDeviceId.c_str(), user.c_str(), topic.c_str());
     //printf("--> command: %s\n", command.c_str());
     //printf("--> message : %s\n", message.c_str());
@@ -498,8 +491,8 @@ void HummingbirdMqttInterface::OnResponseCommandMessage(const std::string& topic
 #endif
 
 #if 1		
-    printf("--> sendToTopic : %s\n", sendToTopic.c_str());
-    printf("--> pubTopic : %s\n", pubTopic.c_str());
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() --> sendToTopic : %s\n", sendToTopic.c_str());
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() --> pubTopic : %s\n", pubTopic.c_str());
 #endif
 
     hummingbird_topic* _pub_topic = _bird->get_pub_topic(pubTopic);
@@ -561,7 +554,7 @@ void HummingbirdMqttInterface::OnResponseCommandMessage(const std::string& topic
 // 2018.01.22 hwanjang - add
 void HummingbirdMqttInterface::OnConnectSuccess(void)
 {
-#if 1
+#if 0
 printf("[hwanjang] HummingbirdMqttInterface::OnConnectSuccess() -> Start ...\n");
 #endif
 	connection_status = true;
@@ -591,70 +584,70 @@ void HummingbirdMqttInterface::SetDeviceStatus(const std::string& message)
 
 void HummingbirdMqttInterface::SendEventMessage(const std::string& message)
 {
-        std::string topic;
-        topic = "devices/";
-        topic.append(hub_id_);  // Global variable
-        topic.append("/event");
+    std::string topic;
+    topic = "devices/";
+    topic.append(hub_id_);  // Global variable
+    topic.append("/event");
 
 #ifdef MQTT_DEBUG  // for debug
-	printf("** HummingbirdMqttInterface::SendEventMessage() -> Start !!\n");
-	printf("--> topic : %s\n", topic.c_str());
+    printf("** HummingbirdMqttInterface::SendEventMessage() -> Start !!\n");
+    printf("--> topic : %s\n", topic.c_str());
     printf("--> message :\n%s\n", message.c_str());
 #endif
 
-        // 2018.02.06 hwanjang - hummingbird connection status check
-        if(!_bird->get_connection_status())
-        {
-                printf("HummingbirdMqttInterface::SendEventMessage() -> The connection was lost ... -> return !!!\n");
-                return;
-        }
+    // 2018.02.06 hwanjang - hummingbird connection status check
+    if (!_bird->get_connection_status())
+    {
+        printf("HummingbirdMqttInterface::SendEventMessage() -> The connection was lost ... -> return !!!\n");
+        return;
+    }
 
-        hummingbird_topic* _pub_topic = _bird->get_pub_topic(topic);
+    hummingbird_topic* _pub_topic = _bird->get_pub_topic(topic);
 
-        if(_pub_topic != NULL)
-        {
-			#if 0 // 2019.12.18 - old
-			_pub_topic->send_message(topic.c_str(), message.c_str(), 1, false);
-			#else // 2019.12.18 - Change QoS : 1 ->0
-			_pub_topic->send_message(topic.c_str(), message.c_str(), 0, false);
-			#endif
-        }
-        else
-        {
-            printf("pub topic %s not found !!!!\n", topic.c_str());
-        }
+    if (_pub_topic != NULL)
+    {
+#if 0 // 2019.12.18 - old
+        _pub_topic->send_message(topic.c_str(), message.c_str(), 1, false);
+#else // 2019.12.18 - Change QoS : 1 ->0
+        _pub_topic->send_message(topic.c_str(), message.c_str(), 0, false);
+#endif
+    }
+    else
+    {
+        printf("pub topic %s not found !!!!\n", topic.c_str());
+    }
 }
 
 void HummingbirdMqttInterface::SendConnectionMessage(const std::string& message)
 {
-        std::string topic;
-        topic = "devices/";
-        topic.append(hub_id_);  // Global variable
-        topic.append("/connection");
+    std::string topic;
+    topic = "devices/";
+    topic.append(hub_id_);  // Global variable
+    topic.append("/connection");
 
 #if 0  // for debug
-        printf("** HummingbirdMqttInterface::SendConnectionMessage() -> Start !!\n");
-        printf("--> topic : %s\n", topic.c_str());
-        printf("--> message :\n%s\n", message.c_str());
+    printf("** HummingbirdMqttInterface::SendConnectionMessage() -> Start !!\n");
+    printf("--> topic : %s\n", topic.c_str());
+    printf("--> message :\n%s\n", message.c_str());
 #endif
 
-        // 2018.02.06 hwanjang - hummingbird connection status check
-        if(!_bird->get_connection_status())
-        {
-                printf("HummingbirdMqttInterface::SendConnectionMessage() -> The connection was lost ... -> return !!!\n");
-                return;
-        }
+    // 2018.02.06 hwanjang - hummingbird connection status check
+    if (!_bird->get_connection_status())
+    {
+        printf("HummingbirdMqttInterface::SendConnectionMessage() -> The connection was lost ... -> return !!!\n");
+        return;
+    }
 
-        hummingbird_topic* _pub_topic = _bird->get_pub_topic(topic);
+    hummingbird_topic* _pub_topic = _bird->get_pub_topic(topic);
 
-        if(_pub_topic != NULL)
-        {
-			_pub_topic->send_message(topic.c_str(), message.c_str(), 1, true);  // true : retain
-        }
-        else
-        {
-			printf("pub topic %s not found !!!!\n", topic.c_str());
-        }
+    if (_pub_topic != NULL)
+    {
+        _pub_topic->send_message(topic.c_str(), message.c_str(), 1, true);  // true : retain
+    }
+    else
+    {
+        printf("pub topic %s not found !!!!\n", topic.c_str());
+    }
 
-printf("** HummingbirdMqttInterface::SendConnectionMessage() -> End !!\n");		
+    //printf("** HummingbirdMqttInterface::SendConnectionMessage() -> End !!\n");
 }

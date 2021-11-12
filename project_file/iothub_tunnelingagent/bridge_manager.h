@@ -17,8 +17,12 @@ public:
 	BridgeManager();
 	~BridgeManager();
 
-	void StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort);
-
+#ifndef USE_ARGV_JSON
+	void StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort, std::string strIP, std::string strPW);
+#else
+	void StartBridgeManager(std::string strDeviceID, std::string strDeviceKey, int nWebPort, std::string strIP, std::string strPW);
+	void StartBridgeManager(Setting_Infos* infos);
+#endif
 	virtual void OnMQTTServerConnectionSuccess(void);
 
 	virtual void ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg);
@@ -32,6 +36,10 @@ public:
 
 	// sunapi_manager.h - ISUNAPIManagerObserver
 	virtual void SendResponseForDashboard(const std::string& topic, const std::string& message);
+
+	int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
+
+	//int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
 private:
 	// for MQTT 

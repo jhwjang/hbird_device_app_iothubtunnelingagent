@@ -7,11 +7,13 @@
 
 #include "mqtt_manager_for_broker.h"
 
+#include "define_for_debug.h"
+
 class BrokerManager : public IMQTTManagerObserver_for_broker
 {
 public:
 	BrokerManager();
-	BrokerManager(std::string broker_agent_id, std::string broker_agent_key);
+	BrokerManager(std::string broker_group_id, std::string broker_agent_id, std::string broker_agent_key);
 
 	~BrokerManager();
 
@@ -23,6 +25,7 @@ public:
 	//virtual void ReceiveMessageFromPeer(int type, const std::string& topic, const std::string& deviceid, const std::string& user, const std::string& message);
 
 	void process_command(const std::string& strTopic, mqtt::const_message_ptr mqttMsg);
+	void process_message(const std::string& strTopic, mqtt::const_message_ptr mqttMsg);
 
 	void CommandRequestCloudServiceStatus(const std::string& strTopic, const std::string& strPayload);
 	// for test
@@ -34,7 +37,7 @@ public:
 
 private:
 	// for MQTT 
-	bool Init_MQTT(std::string deviceID, std::string devicePW);
+	bool Init_MQTT(std::string broker_group_id, std::string deviceID, std::string devicePW);
 	void Start_MQTT();
 
 	///////////////////////////////////////////////////////////////
@@ -43,11 +46,15 @@ private:
 	void thread_function_for_MQTTMsg(mqtt::const_message_ptr mqttMsg);
 
 	///////////////////////////////////////////////////////////////
+	
+	bool find_sourceId(std::string topic, std::string* source_id);
+
 	MQTTManager_for_broker* mMQTT_manager_for_broker_;
 
 	std::string mMqtt_server_;
 
 	// temp
+	std::string g_broker_group_id;
 	std::string g_broker_agent_id;
 	std::string g_broker_agent_key;
 };

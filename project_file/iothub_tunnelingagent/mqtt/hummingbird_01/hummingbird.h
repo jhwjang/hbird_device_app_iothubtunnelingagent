@@ -254,7 +254,8 @@ public:
 		std::string topic_name = pub_topic_list.at(0)->get_topic();
 		connection_topic = create_topic(0, "connection"); // 0: pub
 	
-		std::string presence_str = get_camera_presence();
+		//std::string presence_str = get_camera_presence();
+		std::string presence_str = "Hello, this is mainAgent ...";
 
 		#if 1 // 2019.12.11 - add -> null check
 		if(presence_str.empty())
@@ -269,7 +270,7 @@ printf("[hwanjang] connection topic : %s\n", connection_topic.c_str());
 printf("[hwanjang] connection message : \n%s\n",presence_str.c_str());
 #endif
 
-		pub_topic_list.at(0)->send_message(connection_topic.c_str(), presence_str.c_str(), 1, true); // retain : true
+		//pub_topic_list.at(0)->send_message(connection_topic.c_str(), presence_str.c_str(), 1, true); // retain : true
 
 
 		for(size_t i=0;i<sub_topic_list.size(); i++){

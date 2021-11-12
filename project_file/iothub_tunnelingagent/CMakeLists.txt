@@ -17,6 +17,9 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/curl-7.75.0)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/paho_c_include)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/paho_cpp_include)
 
+# HBirdCrypto
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/third_party/include/HBirdCrypto)
+
 # for lib
 if(MSVC)
 set(THIRD_PARTY_DIR_LIB_DEBUG "${CMAKE_SOURCE_DIR}/third_party/lib/windows/Debug")
@@ -49,6 +52,7 @@ set(CONFIG_SOURCE_FILES
 	mqtt/hummingbird_01/hummingbird_for_broker.cpp mqtt/hummingbird_01/hummingbird_for_broker.h
 	mqtt/hummingbird_01/hummingbird_topic_for_broker.cpp mqtt/hummingbird_01/hummingbird_topic_for_broker.h
 	sunapi_manager.cpp sunapi_manager.h
+	rafagafe_base64.cpp rafagafe_base64.h
 )
 
 add_executable ( iothub_tunnelingagent
@@ -101,12 +105,19 @@ set_target_properties(staticlib_cxx_paho PROPERTIES
 set_target_properties(staticlib_cxx_paho PROPERTIES
           IMPORTED_LOCATION_DEBUG ${THIRD_PARTY_DIR_LIB_DEBUG}/paho-mqttpp3-static.lib)
 
+## HbirdCrypto
+add_library(staticlib_HBirdCrypto STATIC IMPORTED)
+set_target_properties(staticlib_HBirdCrypto PROPERTIES
+          IMPORTED_LOCATION_RELEASE ${THIRD_PARTY_DIR_LIB_RELEASE}/HBirdCrypto_release.lib)
+set_target_properties(staticlib_HBirdCrypto PROPERTIES
+          IMPORTED_LOCATION_DEBUG ${THIRD_PARTY_DIR_LIB_DEBUG}/HBirdCrypto_debug.lib)
+
 target_link_libraries( iothub_tunnelingagent PUBLIC 
 	WS2_32
 	Wldap32
 	Normaliz
 	iphlpapi
-	staticlib_jansson staticlib_crypto staticlib_ssl staticlib_curl staticlib_c_paho staticlib_cxx_paho
+	staticlib_jansson staticlib_crypto staticlib_ssl staticlib_curl staticlib_c_paho staticlib_cxx_paho staticlib_HBirdCrypto
 )
 	
 target_compile_options( iothub_tunnelingagent PRIVATE "$<$<CONFIG:Debug>:/MTd>")
