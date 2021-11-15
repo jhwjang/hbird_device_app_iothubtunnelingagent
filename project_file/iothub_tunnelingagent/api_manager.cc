@@ -15,9 +15,6 @@
 using namespace std;
 using std::this_thread::sleep_for;
 
-//#define TEST_DEVICE_ADDRESS "192.168.123.201"  // for Web TEAM
-#define TEST_DEVICE_ADDRESS "192.168.11.5"  // for my device
-
 // Default timeout is 0 (zero) which means it never times out during transfer.
 //#define CURL_TIMEOUT 10 
 #define CURL_TIMEOUT 0  // for getting info ...

@@ -1542,9 +1542,9 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 {
 	time_t update_time = time(NULL);
 	
-	int skip_time = 1;
+	int skip_time = 2; 
 
-	if ((update_time - g_UpdateTimeOfRegistered) > skip_time)
+	if ((update_time - g_UpdateTimeOfRegistered) > skip_time) // more than 3 seconds
 	{
 		g_CheckUpdateOfRegistered = false;
 		g_UpdateTimeOfRegistered = update_time;
@@ -2610,14 +2610,14 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 						int ret;
 						int bEnable;
 						size_t index;
-						char* charType, * charStatus;
+						char* charType, *charStatus, *charTotalSpace;
 						json_t* obj;
 
 						json_array_foreach(json_array, index, obj)
 						{
 							//  - Type(<enum> DAS, NAS) , Enable , Satus
 							ret = json_unpack(obj, "{s:s, s:b, s:s}",
-								"Type", &charType, "Enable", &bEnable, "Status", &charStatus);
+								"Type", &charType, "Enable", &bEnable, "TotalSpace", charTotalSpace);
 
 							if (ret)
 							{
@@ -2640,9 +2640,27 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 
 									if (bEnable)
 									{
-										g_Worker_Storage_info_[channel].das_status.clear();
-										g_Worker_Storage_info_[channel].das_status = charStatus;
-										printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+										ret = json_unpack(obj, "{s:s}", "Status", &charStatus);
+
+										if (ret)
+										{
+											if (strncmp("0", charTotalSpace, 1) == 0)
+											{
+												g_Worker_Storage_info_[channel].das_status.clear();
+												g_Worker_Storage_info_[channel].das_status = "NONE";
+											}
+											else
+											{
+												g_Worker_Storage_info_[channel].das_status.clear();
+												g_Worker_Storage_info_[channel].das_status = "unknown";
+											}
+										}
+										else
+										{
+											g_Worker_Storage_info_[channel].das_status.clear();
+											g_Worker_Storage_info_[channel].das_status = charStatus;
+											printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+										}
 									}
 									else
 									{
@@ -2659,9 +2677,27 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 
 									if (bEnable)
 									{
-										g_Worker_Storage_info_[channel].nas_status.clear();
-										g_Worker_Storage_info_[channel].nas_status = charStatus;
-										printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+										ret = json_unpack(obj, "{s:s}", "Status", &charStatus);
+
+										if (ret)
+										{
+											if (strncmp("0", charTotalSpace, 1) == 0)
+											{
+												g_Worker_Storage_info_[channel].nas_status.clear();
+												g_Worker_Storage_info_[channel].nas_status = "NONE";
+											}
+											else
+											{
+												g_Worker_Storage_info_[channel].nas_status.clear();
+												g_Worker_Storage_info_[channel].nas_status = "unknown";
+											}
+										}
+										else
+										{
+											g_Worker_Storage_info_[channel].nas_status.clear();
+											g_Worker_Storage_info_[channel].nas_status = charStatus;
+											printf("thread_function_for_storage_status() -> channel : %d, type : %s , bEnable : %d\n", channel, charType, bEnable);
+										}
 									}
 									else
 									{

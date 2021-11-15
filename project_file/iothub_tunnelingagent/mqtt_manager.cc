@@ -62,9 +62,11 @@ void MQTTManager::SendMessageToClient(std::string topic, std::string message, in
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, std::string message)
 {
-#if 0
+#if 1
+	time_t now = time(NULL);
+	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
-	printf("MQTTManager::OnResponseCommandMessage() : message : %s\n", message.c_str());
+	printf("MQTTManager::OnResponseCommandMessage() : message : \n%s\n", message.c_str());
 #endif
 
 	if (g_MQTT_interface_Handler != nullptr)
@@ -75,8 +77,11 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, std::string messag
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payload, int size)
 {
-#if 0
+#if 1
+	time_t now = time(NULL);
+	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
+	printf("MQTTManager::OnResponseCommandMessage() : payload : \n%s\n", payload);
 #endif
 
 	if (g_MQTT_interface_Handler != nullptr)
@@ -96,7 +101,7 @@ void MQTTManager::ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg)
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::ReceiveMessageFromPeer() -> time : %lld\n", now);
 	printf("[hwanjang] topic : %s\n", topic.c_str());
-	printf("[hwanjang] message : %s\n", message.c_str());
+	printf("[hwanjang] message : \n%s\n", message.c_str());
 #endif
 
 	if (observerForHbirdManager != nullptr)
