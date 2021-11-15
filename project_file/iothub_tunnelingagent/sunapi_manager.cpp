@@ -2617,7 +2617,7 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 						{
 							//  - Type(<enum> DAS, NAS) , Enable , Satus
 							ret = json_unpack(obj, "{s:s, s:b, s:s}",
-								"Type", &charType, "Enable", &bEnable, "TotalSpace", charTotalSpace);
+								"Type", &charType, "Enable", &bEnable, "TotalSpace", &charTotalSpace);
 
 							if (ret)
 							{

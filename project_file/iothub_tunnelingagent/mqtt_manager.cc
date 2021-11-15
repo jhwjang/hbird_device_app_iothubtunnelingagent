@@ -81,7 +81,6 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payloa
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
-	printf("MQTTManager::OnResponseCommandMessage() : payload : \n%s\n", payload);
 #endif
 
 	if (g_MQTT_interface_Handler != nullptr)
