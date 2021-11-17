@@ -333,7 +333,7 @@ bool sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 
 	bool ret = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
 
-	sleep_for(std::chrono::milliseconds(1 * 2000));
+	sleep_for(std::chrono::milliseconds(1 * 1000));
 
 	ret = GetDataForFirmwareVersionInfo();
 
