@@ -216,8 +216,6 @@ hummingbird_topic_sub_Command::hummingbird_topic_sub_Command(mqtt::async_client*
     topic_.append(user_id);
     topic_.append("/command");
     QOS = 1;
-
-	printf("[hwanjang] hummingbird_topic_sub_Command() -> topic : %s\n", topic_.c_str());
 }
 
 std::string hummingbird_topic_sub_Command::get_topic(){
@@ -289,8 +287,6 @@ hummingbird_topic_sub_SUNAPITunneling::hummingbird_topic_sub_SUNAPITunneling(mqt
     topic_.append(user_id);
     topic_.append("/sunapi");  
     QOS = 1;
-
-	printf("[hwanjang] hummingbird_topic_sub_SUNAPITunneling() -> topic : %s\n", topic_.c_str());
 }
 
 std::string hummingbird_topic_sub_SUNAPITunneling::get_topic(){
@@ -314,8 +310,7 @@ int hummingbird_topic_sub_SUNAPITunneling::mqtt_response(mqtt::const_message_ptr
 }
 
 int hummingbird_topic_sub_SUNAPITunneling::init(){
-//#ifdef HUMMINGBIRD_DEBUG
-#if 1
+#ifdef HUMMINGBIRD_DEBUG
 	std::cout<<"it is  "<< topic_ <<"(Topic)'s init mqtt_response" <<std::endl;
 #endif
     cli_->subscribe(topic_, QOS);
@@ -363,8 +358,6 @@ hummingbird_topic_sub_HttpTunneling::hummingbird_topic_sub_HttpTunneling(mqtt::a
     topic_.append(user_id);
     topic_.append("/http");
     QOS = 1;
-
-    printf("[hwanjang] hummingbird_topic_sub_HttpTunneling() -> topic : %s\n", topic_.c_str());
 }
 
 std::string hummingbird_topic_sub_HttpTunneling::get_topic() {
@@ -388,8 +381,7 @@ int hummingbird_topic_sub_HttpTunneling::mqtt_response(mqtt::const_message_ptr m
 }
 
 int hummingbird_topic_sub_HttpTunneling::init() {
-    //#ifdef HUMMINGBIRD_DEBUG
-#if 1
+#ifdef HUMMINGBIRD_DEBUG
     std::cout << "it is  " << topic_ << "(Topic)'s init mqtt_response" << std::endl;
 #endif
     cli_->subscribe(topic_, QOS);
