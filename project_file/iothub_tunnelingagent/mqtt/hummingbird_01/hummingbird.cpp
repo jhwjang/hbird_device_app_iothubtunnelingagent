@@ -145,6 +145,8 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
     printf("[hwanjang] diff_sec : %lld\n", (long long int)diff_sec);
 		
 	srand((unsigned)time(NULL));
+
+#if 0
     if(diff_sec < 1200)  // 1200 -> 20 min
     { 
 		#if 0
@@ -169,9 +171,13 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
         //sec = (rand() % 10) + 1;
         //printf("[hwanjang] --> do not exit .... reconnect after %d sec ...\n", sec);
     }   
-		
+#else
+	sec = (rand() % 10) + 1;  // 1 ~ 10 sec
+#endif
+
     //sleep(sec);
 	sleep_for(std::chrono::milliseconds(sec * 1000));
+
 	try {
 		//cli_->connect(connOpts_, nullptr, *this);
 #if 1

@@ -265,7 +265,7 @@ public:
 		}
 		#endif
 
-#if 1 // for debug
+#if 0 // for debug
 printf("[hwanjang] connection topic : %s\n", connection_topic.c_str());
 printf("[hwanjang] connection message : \n%s\n",presence_str.c_str());
 #endif
