@@ -489,9 +489,9 @@ void HummingbirdMqttInterface::OnResponseCommandMessage(const std::string& topic
     sendToTopic = topic.substr(index + 12);
 #endif
 
-#if 1		
-    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() --> sendToTopic : %s\n", sendToTopic.c_str());
-    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() --> pubTopic : %s\n", pubTopic.c_str());
+#ifdef MQTT_DEBUG // for debug	
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() 1 --> sendToTopic : %s\n", sendToTopic.c_str());
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() 1 --> pubTopic : %s\n", pubTopic.c_str());
 #endif
 
     hummingbird_topic* _pub_topic = _bird->get_pub_topic(pubTopic);
@@ -534,9 +534,9 @@ void HummingbirdMqttInterface::OnResponseCommandMessage(const std::string& topic
     sendToTopic = topic.substr(index + 12);
 #endif
 
-#if 1		
-    printf("--> sendToTopic : %s\n", sendToTopic.c_str());
-    printf("--> pubTopic : %s\n", pubTopic.c_str());
+#ifdef MQTT_DEBUG // for debug	
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() 2 --> sendToTopic : %s\n", sendToTopic.c_str());
+    printf("[hwanjang] HummingbirdMqttInterface::OnResponseCommandMessage() 2 --> pubTopic : %s\n", pubTopic.c_str());
 #endif
 
     hummingbird_topic* _pub_topic = _bird->get_pub_topic(pubTopic);

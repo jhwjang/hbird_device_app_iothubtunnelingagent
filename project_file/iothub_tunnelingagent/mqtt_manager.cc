@@ -77,7 +77,7 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, std::string messag
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payload, int size)
 {
-#if 1
+#if 1  // for debug
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
