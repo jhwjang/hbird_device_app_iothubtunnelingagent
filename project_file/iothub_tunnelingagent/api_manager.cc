@@ -807,7 +807,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	}
 #endif
 
-	printf("[hwanjang] SUNAPI Tunneling param , method : %s , url : %s\n", strMethod, strUrl);
+	//printf("[hwanjang] SUNAPI Tunneling param , method : %s , url : %s\n", strMethod, strUrl);
 
 	std::string strRepuest;
 
@@ -820,7 +820,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	strRepuest = "https://" + gStrDeviceIP + ":" + std::to_string(gGatewayHttpsPort) + strUrl;
 #endif
 
-	printf("[hwanjang] SUNAPITunnelingCommand() -> Request : %s\n", strRepuest.c_str());
+	//printf("[hwanjang] SUNAPITunnelingCommand() -> Request : %s\n", strRepuest.c_str());
 
 #if 0
 	CURL* curl_handle;
@@ -901,8 +901,8 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 		if (strSUNAPIResult.size() == 0) // error
 		{
-			json_object_set(sub_Msg, "statusCode", json_integer(res));
-			json_object_set(sub_Msg, "body", json_string("fail"));
+			json_object_set(sub_Msg, "statusCode", json_integer(200));
+			json_object_set(sub_Msg, "body", json_string("result is empty"));
 		}
 		else  // OK
 		{
