@@ -59,8 +59,7 @@ HummingbirdMqttInterface::HummingbirdMqttInterface(
   : //client(server_address, id),
     client(server_address, "main_agent_bridge"),
    connopts(id, pw)
-{
-    
+{    
   hub_id_ = id;  
   hub_pw_ = pw;
    

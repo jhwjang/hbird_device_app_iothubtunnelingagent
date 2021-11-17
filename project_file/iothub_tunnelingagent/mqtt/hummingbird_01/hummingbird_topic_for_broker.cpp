@@ -256,9 +256,7 @@ hummingbird_topic_pub_Command_for_broker::hummingbird_topic_pub_Command_for_brok
     std::string subTopic = "command";
     g_Topic_ = create_topic(group_id, d_id, s_id, subTopic); // pub;
 
-//printf("** pub command topic : %s\n", topic_.c_str());
-
-    std::cout << "broker ... command Pub Topic : " << g_Topic_ << std::endl;
+    //std::cout << "broker ... command Pub Topic : " << g_Topic_ << std::endl;
 }
 
 std::string hummingbird_topic_pub_Command_for_broker::get_topic(){
@@ -291,7 +289,7 @@ hummingbird_topic_sub_Command_for_broker::hummingbird_topic_sub_Command_for_brok
     std::string subTopic = "command";
     g_Topic_ = create_topic(group_id, d_id, s_id, subTopic); // sub;
 
-    std::cout << "broker ... command Sub Topic : " << g_Topic_ << std::endl;
+    //std::cout << "broker ... command Sub Topic : " << g_Topic_ << std::endl;
 }
 
 std::string hummingbird_topic_sub_Command_for_broker::get_topic() {

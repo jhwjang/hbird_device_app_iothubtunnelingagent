@@ -274,7 +274,7 @@ bool HummingbirdMqttInterface_for_broker::SendMQTTMessageToPeer(const std::strin
 
     std::string pubTopic = topic;
 
-#if 1   
+#ifdef MQTT_DEBUG  // for debug
     printf("--> pubTopic : %s\n", pubTopic.c_str());
 #endif
 
@@ -394,7 +394,7 @@ void HummingbirdMqttInterface_for_broker::OnResponseCommandMessage(const std::st
 
     std::string responseTopic = topic;
 
-#if 1		
+#ifdef MQTT_DEBUG  // for debug	
     printf("--> responseTopic : %s\n", responseTopic.c_str());
 #endif
 
@@ -426,7 +426,7 @@ void HummingbirdMqttInterface_for_broker::OnResponseCommandMessage(const std::st
  
     std::string responseTopic = topic;
 
-#if 1		
+#ifdef MQTT_DEBUG  // for debug	
     printf("--> responseTopic : %s\n", responseTopic.c_str());
 #endif
 
