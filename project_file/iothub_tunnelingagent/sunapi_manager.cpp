@@ -1792,6 +1792,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						ResetStorageInfoForChannel(index);
 						ResetSubdeviceInfoForChannel(index);
 						ResetFirmwareVersionInfoForChannel(index);
+
 						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 0;  // Disconnected
 						g_Worker_SubDevice_info_[index].ConnectionStatus = "Disconnected";
 					}
@@ -1862,17 +1863,17 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 						result = json_unpack(obj, "{s:s}", "IPAddress", &charIPAddress);
 						if (result)
 						{
-							printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status & IPAddress is empty ??? unknown @@@@@@@\n", index);
+							printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status & IPAddress is empty ??? error @@@@@@@\n", index);
 
-							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;
-							g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error
+							g_Worker_SubDevice_info_[index].ConnectionStatus = "empty";
 						}
 						else
 						{
 							g_RegisteredCameraCnt++;
 
-							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;  
-							g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error ??
+							g_Worker_SubDevice_info_[index].ConnectionStatus = "empty";
 
 							printf("GetRegiesteredCameraStatus() -> channel : %d , Connect status ???? ... unknown... g_RegisteredCameraCnt : %d\n", index, g_RegisteredCameraCnt);
 						}
@@ -1883,8 +1884,8 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 
 						printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status : %s ?????? unknown @@@@@@@\n", index, charStatus);
 
-						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 5;
-						g_Worker_SubDevice_info_[index].ConnectionStatus = "unknown";
+						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error
+						g_Worker_SubDevice_info_[index].ConnectionStatus = charStatus;
 					}
 
 					if (g_Worker_SubDevice_info_[index].CheckConnectionStatus != 0)  // 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
@@ -1900,7 +1901,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:s}", "IPAddress", &charIPAddress);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , IPAddress\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. IPAddress , index : %d \n", index);
 							}
 							else
 							{
@@ -1912,7 +1913,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:i}", "HTTPPort", &webPort);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , HTTPPort\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. HTTPPort , index : %d \n", index);
 							}
 							else
 							{
@@ -1923,7 +1924,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:s}", "Model", &charModel);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , Model\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. Model , index : %d \n", index);
 							}
 							else
 							{
@@ -1935,7 +1936,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:b}", "IsBypassSupported", &IsBypassSupported);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , IsBypassSupported\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. IsBypassSupported , index : %d \n", index);
 							}
 							else
 							{
@@ -1946,7 +1947,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							result = json_unpack(obj, "{s:s}", "Title", &charTitle);
 							if (result)
 							{
-								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. index : %d , Title\n", index);
+								printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. Title , index : %d \n", index);
 							}
 							else
 							{
@@ -2706,10 +2707,10 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 					g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 					// DAS			
 					g_Worker_Storage_info_[channel].das_status.clear();
-					g_Worker_Storage_info_[channel].das_status = "unknown";
+					g_Worker_Storage_info_[channel].das_status = "parsingError";
 					// NAS			
 					g_Worker_Storage_info_[channel].nas_status.clear();
-					g_Worker_Storage_info_[channel].nas_status = "unknown";
+					g_Worker_Storage_info_[channel].nas_status = "parsingError";
 				}
 				else
 				{
@@ -2723,10 +2724,10 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 						g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 						// DAS			
 						g_Worker_Storage_info_[channel].das_status.clear();
-						g_Worker_Storage_info_[channel].das_status = "unknown";
+						g_Worker_Storage_info_[channel].das_status = "errorStorages";
 						// NAS		
 						g_Worker_Storage_info_[channel].nas_status.clear();
-						g_Worker_Storage_info_[channel].nas_status = "unknown";
+						g_Worker_Storage_info_[channel].nas_status = "errorStorages";
 					}
 					else
 					{
@@ -2750,10 +2751,10 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 								g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 								// DAS			
 								g_Worker_Storage_info_[channel].das_status.clear();
-								g_Worker_Storage_info_[channel].das_status = "unknown";
+								g_Worker_Storage_info_[channel].das_status = "noToken";
 								// NAS		
 								g_Worker_Storage_info_[channel].nas_status.clear();
-								g_Worker_Storage_info_[channel].nas_status = "unknown";
+								g_Worker_Storage_info_[channel].nas_status = "noToken";
 							}
 							else
 							{
@@ -2851,10 +2852,10 @@ void sunapi_manager::thread_function_for_storage_status(int channel, const std::
 									g_Worker_Storage_info_[channel].storage_update_time = 0; // if failed to update, reset 0
 									// DAS			
 									g_Worker_Storage_info_[channel].das_status.clear();
-									g_Worker_Storage_info_[channel].das_status = "unknown";
+									g_Worker_Storage_info_[channel].das_status = "unExpectedToken";
 									// NAS		
 									g_Worker_Storage_info_[channel].nas_status.clear();
-									g_Worker_Storage_info_[channel].nas_status = "unknown";
+									g_Worker_Storage_info_[channel].nas_status = "unExpectedToken";
 								}
 							}
 						}
