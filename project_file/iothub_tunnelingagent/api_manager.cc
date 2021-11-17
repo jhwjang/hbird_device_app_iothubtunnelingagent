@@ -1010,8 +1010,15 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	//printf("APIManager::SUNAPITunnelingCommand()() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
-	printf("[hwanjang APIManager::SUNAPITunnelingCommand()() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	//printf("APIManager::SUNAPITunnelingCommand() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	//printf("[hwanjang APIManager::SUNAPITunnelingCommand() response ---> size : %lu, send message : \n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+
+	if (strRepuest.find("msubmenu=cameraregister&action=add") != std::string::npos)
+	{
+		sleep_for(std::chrono::milliseconds(200));
+
+		printf("[hwanjang APIManager::SUNAPITunnelingCommand() ---> sleep ... & send response ...\n");
+	}
 
 	observerForHbirdManager->SendResponseToPeer(strTopic, strMQTTMsg);
 
