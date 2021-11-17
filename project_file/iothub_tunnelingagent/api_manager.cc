@@ -46,14 +46,14 @@ APIManager* APIHandler;
 
 APIManager::APIManager(){
 
-	printf("[hwanjang] APIManager -> constructor !!!\n");
 	APIHandler = this;
 
 	observerForHbirdManager = nullptr;
+
+	gGatewayHttpsPort = 443;
 }
 
 APIManager::~APIManager() {
-	printf("[hwanjang] APIManager::~APIManager() -> Destructor !!!\n");
 
 }
 
@@ -100,8 +100,6 @@ void APIManager::init(const std::string strIP, const std::string strPW, int port
 
 	gGatewayHttpsPort = port;
 #endif
-
-	printf("APIManager() -> gStrDeviceIP : %s , gStrDevicePW : %s, https port : %d\n", gStrDeviceIP.c_str(), gStrDevicePW.c_str(), gGatewayHttpsPort);
 }
 
 #if 0  // test
@@ -142,9 +140,9 @@ int APIManager::GetDeviceIP_PW(std::string* strIP, std::string* strPW)
 #endif
 
 #if 0  // old
-CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult)
+CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, std::string strRequest, std::string strPW, std::string* strResult)
 #else  // add timeout option
-CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult)
+CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, std::string* strResult)
 #endif
 {
 	time_t startTimeOfCURL_Process = time(NULL);
@@ -161,8 +159,8 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 	curl_global_init(CURL_GLOBAL_ALL);
 	curl_handle = curl_easy_init();
 
-#if 1  // 2019.09.05 hwanjang - sunapi debugging
-	printf("APIManager::curl_process() -> request : %s , pw : %s\n", strRequset.c_str(), strPW.c_str());
+#if 0  // 2019.09.05 hwanjang - sunapi debugging
+	printf("APIManager::curl_process() -> request : %s \n", strRequest.c_str());
 #endif
 
 	if (curl_handle)
@@ -183,7 +181,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 #endif
 
 		curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
-		curl_easy_setopt(curl_handle, CURLOPT_URL, strRequset.c_str());
+		curl_easy_setopt(curl_handle, CURLOPT_URL, strRequest.c_str());
 		//curl_easy_setopt(curl_handle, CURLOPT_PORT, 80L);
 		curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
 		curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
@@ -214,7 +212,7 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* check for errors */
 		if (res != CURLE_OK)
 		{
-			printf("APIManager::CURL_Process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequset.c_str(), res, curl_easy_strerror(res));
+			printf("APIManager::CURL_Process() -> curl_easy_perform() failed .. request : %s, code : %d,  %s\n", strRequest.c_str(), res, curl_easy_strerror(res));
 		}
 		else
 		{
