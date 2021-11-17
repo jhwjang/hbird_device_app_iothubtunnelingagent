@@ -125,7 +125,6 @@ typedef struct channel_Info {
 
 
 typedef struct firmware_version_Info {
-	time_t version_update_time;
 	bool fw_update_check;
 	bool last_fw_update_check;
 	int curl_responseCode;
@@ -188,9 +187,13 @@ protected:
 
 	//update
 	void UpdateStorageInfos();
+	void UpdateStorageInfosForChannel(int channel);
 	void UpdateSubdeviceInfos();
+	void UpdateSubdeviceInfosForChannel(int channel);
 	void UpdateSubdeviceNetworkInterfaceInfos();
+	void UpdateSubdeviceNetworkInterfaceInfosForChannel(int channel);
 	void UpdateFirmwareVersionInfos();
+	void UpdateFirmwareVersionInfosForChannel(int channel);
 
 	int GetDeviceIP_PW(std::string* strIP, std::string* strPW);
 
@@ -205,10 +208,10 @@ protected:
 
 	static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp);
 #if 0
-	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequset, std::string strPW, std::string* strResult);
+	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequest, std::string strPW, std::string* strResult);
 #else  // add timeout option
-	CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, std::string* strResult);
-	CURLcode curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequset, std::string strPW, void *chunk_data);
+	CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, std::string* strResult);
+	CURLcode curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, void *chunk_data);
 #endif
 
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
@@ -308,6 +311,7 @@ private:
 
 
 	bool g_CheckUpdateOfRegistered;
+	bool g_RetryCheckUpdateOfRegistered;
 	time_t g_UpdateTimeOfRegistered;	
 
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info - 21.11.04 no longer used
