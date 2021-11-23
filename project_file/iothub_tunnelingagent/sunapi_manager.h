@@ -131,6 +131,8 @@ typedef struct channel_Info {
 
 
 typedef struct firmware_version_Info {
+	time_t fw_update_time;
+	time_t last_fw_update_time;
 	bool fw_update_check;
 	bool last_fw_update_check;
 	int curl_responseCode;
@@ -139,7 +141,7 @@ typedef struct firmware_version_Info {
 	std::string UpgradeStatus;
 } Firmware_Version_Infos;
 
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct ISUNAPIManagerObserver {
 	virtual ~ISUNAPIManagerObserver() {};
 
@@ -237,14 +239,13 @@ protected:
 	int ThreadStartForStorageStatus(int channel, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_storage_status(int channel, const std::string deviceIP, const std::string devicePW);
 
-	void SendResponseForDashboardView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
-
 	void Set_update_checkForStorageInfo();
 	void Reset_update_checkForStorageInfo();
 	int ThreadStartSendResponseForDashboardView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	void thread_function_for_send_response_for_dashboard(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
+	void SendResponseForDashboardView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 2. deviceinfo view
@@ -258,8 +259,6 @@ protected:
 	int ThreadStartForNetworkInterface(int index, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_network_interface(int index, const std::string deviceIP, const std::string devicePW);
 
-	void SendResponseForDeviceInfoView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
-
 	void Set_update_checkForDeviceInfo();
 	void Reset_update_checkForDeviceInfo();
 	void Set_update_checkForNetworkInterface();
@@ -267,9 +266,15 @@ protected:
 	int ThreadStartSendResponseForDeviceInfoView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 	void thread_function_for_send_response_for_deviceInfo(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
+	void SendResponseForDeviceInfoView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 3. firmware info view
+	bool GetDataForFirmwareVersionInfo(int skip_time);
+	bool UpdateFirmwareVersionInfoFromFile(int skip_time);
+
+	int ThreadStartForCurrentFirmwareVersionOfSubdevices();
+	void thread_function_for_current_firmware_version();
 
 	bool GetFirmwareVersionFromText(std::string strText, std::string* strResult);
 
@@ -279,15 +284,11 @@ protected:
 	int ThreadStartForFirmwareVersion(int channel, const std::string deviceIP, const std::string devicePW);
 	void thread_function_for_firmware_version(int channel, const std::string deviceIP, const std::string devicePW);
 
-	bool GetLatestFirmwareVersionFromFile(std::string file_name);
-	bool GetLatestFirmwareVersionFromURL(std::string update_FW_Info_url);
-
-	bool GetDataForFirmwareVersionInfo();
+	bool GetLatestFirmwareVersionFromFile(std::string file_name, int skip_time);
+	bool GetLatestFirmwareVersionFromURL(std::string update_FW_Info_url, std::string fileName);
 
 	int ThreadStartGetLatestFirmwareVersionFromURL();
 	void thread_function_for_get_latestFirmwareVersion();
-
-	void SendResponseForFirmwareView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
 	void Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
 	void Reset_update_check_Firmware_Ver_info_ForFirmwareVersion();
@@ -295,7 +296,16 @@ protected:
 	int ThreadStartSendResponseForFirmwareView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 	void thread_function_for_send_response_for_firmwareVersion(int maxChannel, const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
 
+	//////////////////////////////////////////////////////////////////////////////////
+	bool UpdateContainerForLatestFirmwareVersionInfo(std::string file_name);
+	bool DownloadFileForLatestFirmwareVersionInfo(std::string file_name, int skip_time);
+	void UpdateLatestFirmwareVersion();
+	int ThreadStartUpdateLatestFirmwareVersion(int channel);
+	void thread_function_for_update_latestFirmwareVersion(int channel);
 
+	void SendResponseForFirmwareView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
 	// 4. firmware update
 	void SendResponseForUpdateFirmware(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid,
 										int resCode, int rawCode, std::vector<int> updateChannel);
@@ -303,11 +313,18 @@ protected:
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
 	// for update
-	int ThreadStartForUpdateInfos(int second);
-	void thread_function_for_update_infos(int second);
+	int ThreadStartForPeriodicCheckDeviceInfos(int second, bool repetition);
+	void thread_function_for_periodic_check(int second, bool repetition);
 
-	void UpdateDataForDashboardView();
+	bool RequestCameraDiscovery();
 
+	// 1. periodic update for storage info
+	void UpdateDataForStorageInfo();
+	// 2. periodic update for device info
+	void UpdateDataForDeviceInfo();
+	// 3. periodic update for firmware version info
+	void UpdateDataForFirmwareVersionInfo(int skip_time);
+	bool update_firmware_info_file(std::string info_file, std::string temp_file);
 
 private:
 	int g_Max_Channel;
@@ -321,6 +338,7 @@ private:
 	bool g_CheckUpdateOfRegistered;
 	bool g_RetryCheckUpdateOfRegistered;
 	time_t g_UpdateTimeOfRegistered;
+	time_t g_UpdateTimeOfDiscovery;
 
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info - 21.11.04 no longer used
 
@@ -330,6 +348,8 @@ private:
 	time_t g_StartTimeOfStorageStatus;
 	time_t g_StartTimeOfDeviceInfo;
 	time_t g_StartTimeForFirmwareVersionView;
+
+	time_t g_UpdateTimeOfPeriodicCheck;
 
 	ISUNAPIManagerObserver* observerForHbirdManager;
 
