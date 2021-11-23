@@ -26,6 +26,7 @@ using std::this_thread::sleep_for;
 #define GET_WAIT_TIMEOUT 3
 #define CURL_TIMEOUT 0
 #define CURL_CONNECTION_TIMEOUT 3
+#define SKIP_TIME_LATEST_INFO 1000  // skip 15 min
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
@@ -2413,7 +2414,7 @@ void sunapi_manager::GetFirmwareVersionInfoView(const std::string& strTopic, jso
 #if 1  // 21.11.19 - periodic update
 	//bool ret = GetDataForFirmwareVersionInfo();
 
-	int skip_time = 3600;  // skip ... within 1 hour
+	int skip_time = SKIP_TIME_LATEST_INFO;  // skip ... within 15 min
 	bool ret = UpdateFirmwareVersionInfoFromFile(skip_time);
 #endif
 
