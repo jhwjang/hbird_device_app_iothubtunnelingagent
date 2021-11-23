@@ -138,13 +138,7 @@ void BridgeManager::StartBridgeManager(Setting_Infos* infos)
 
 	//result = mSUNAPI_manager_->SunapiManagerInit(strGatewayIP, strGatewayPW, device_id, nWebPort, strMac);
 
-	result = mSUNAPI_manager_->SunapiManagerInit(&_setting_infos);
-
-	if (!result)
-	{
-		printf("BridgeManager::StartBridgeManager() -> failed to SunapiManagerInit ...  \n");
-	}
-
+	mSUNAPI_manager_->SunapiManagerInit(&_setting_infos);
 #endif
 
 	mMqtt_server_ = "tcp://localhost:2883";  // test for mosquitto bridge
@@ -214,7 +208,7 @@ bool BridgeManager::Init_MQTT(std::string deviceID, std::string devicePW)
 	std::string strCAFilePath = strPATH;
 #endif
 
-	// Create MQTT Manager 
+	// Create MQTT Manager
 	int maxCh = 1; // Cloud Gateway
 
 	//mMQTT_manager_ = new MQTTManager(mMqtt_server_, deviceID, devicePW);
@@ -247,7 +241,7 @@ void BridgeManager::OnMQTTServerConnectionSuccess(void)
 
 ///////////////////////////////////////////////////////////////////////////
 /// <summary>
-/// 
+///
 /// </summary>
 /// <param name="mqttMsg"></param>
 void BridgeManager::ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg)
@@ -354,7 +348,8 @@ void BridgeManager::process_SUNAPITunneling(const std::string& strTopic, mqtt::c
 	bool result;
 
 	if (json_root)
-		result = mAPI_manager_->SUNAPITunnelingCommand(strTopic, json_root);
+		//result = mAPI_manager_->SUNAPITunnelingCommand(strTopic, json_root);		// use api_manager
+		result = mSUNAPI_manager_->SUNAPITunnelingCommand(strTopic, json_root);		// use sunapi_manager
 	else
 	{
 		// mqtt 로 받은 msg에 대한 파싱을 실패하면 해당 block 에서 에러 처리 해야 한다.
@@ -379,7 +374,7 @@ void BridgeManager::process_HttpTunneling(const std::string& strTopic, mqtt::con
 	else
 	{
 		// mqtt 로 받은 msg에 대한 파싱을 실패하면 해당 block 에서 에러 처리 해야 한다.
-		printf("---> 1. Received unknown message !!!!\nmsg:\n%s\n return !!!!!!!!!!!!\n", mqttMsg->to_string().c_str());		
+		printf("---> 1. Received unknown message !!!!\nmsg:\n%s\n return !!!!!!!!!!!!\n", mqttMsg->to_string().c_str());
 	}
 
 	json_decref(json_root);

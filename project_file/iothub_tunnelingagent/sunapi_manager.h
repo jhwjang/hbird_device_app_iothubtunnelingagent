@@ -18,12 +18,18 @@ typedef struct MemoryStruct {
 } ChunkStruct;
 
 
+
 /////////////////////////////////////////////////////////////////////////////
-// int -> -1 : unknown ,  0 : false , 1 : true , 2 : timeout , 3 : authfail
-// 
+//
+typedef struct discovered_camera_Info {
+	std::string Model;
+	std::string IPAddress;
+	std::string MACAddress;
+} DiscoveredCameras_Infos;
+
 //////////////////////////////////////////////////////////////////////////////
 // for firmware info
-// 
+//
 // https://update.websamsung.net/FW/Update_FW_Info3.txt
 //
 // QND-6010R,NW_Camera,img,QND6010R_Series,qnd6010r_Series_4.01_210706.img,4.01_210706,NO,NO,NO,,9187880702fc44f5341978a0f0580aa7
@@ -47,15 +53,15 @@ typedef struct firmware_update_Info {
 
 //////////////////////////////////////////////////////////////////////////////
 // for 1. dashboard view  - need to bypass
-// 
+//
 // http://<ip>/stw-cgi/eventstatus.cgi?msubmenu=eventstatus&action=check&SystemEvent=SDInsert
 //  - das_presence
 // http://<ip>/stw-cgi/eventstatus.cgi?msubmenu=eventstatus&action=check&SystemEvent=NASConnect
 //  - nas_presence
-//  
+//
 // http://<ip>/stw-cgi/system.cgi?msubmenu=storageinfo&action=view
 //  - das_enable , das_recording_status , nas_enable , nas_recording_status
-// 
+//
 // http://<ip>/stw-cgi/recording.cgi?msubmenu=storage&action=view (not use)
 //  - das_enable , das_overwrite
 
@@ -78,7 +84,7 @@ typedef struct storage_Info {
 
 //////////////////////////////////////////////////////////////////////////////
 // for 2. deviceinfo view  - need to bypass
-// 
+//
 // http://<IP>/stw-cgi/media.cgi?msubmenu=cameraregister&action=view
 //  - Model, UserID , HTTPPort
 // http://<IP>/stw-cgi/network.cgi?msubmenu=interface&action=view  : need to bypass
@@ -108,14 +114,14 @@ typedef struct networkinterface_Info {
 typedef struct channel_Info {
 	time_t channel_update_time;
 	bool update_check_deviceinfo;
-	bool IsBypassSupported;		
+	bool IsBypassSupported;
 	int CheckConnectionStatus;		// 0 : Disconnected , 1 : Success , 2 : ConnectFail , 3 : timeout , 4 : authError , 5 : unknown
 	int curl_responseCode;
-	int HTTPPort;	
+	int HTTPPort;
 	std::string ConnectionStatus; // Disconnected , Success , ConnectFail , authError, timeout , unknown
 	std::string DeviceModel;	// camera model
 	std::string DeviceName;		// 21.09.06 add - sub device name
-	std::string ChannelTitle;	// 21.10.27 add - sub Channel Title 
+	std::string ChannelTitle;	// 21.10.27 add - sub Channel Title
 	std::string Channel_FirmwareVersion;
 	SubDevice_NetworkInterface_Info NetworkInterface;
 	//std::string LinkStatus;		// Connected , Disconnected
@@ -151,7 +157,7 @@ public:
 #ifndef USE_ARGV_JSON
 	bool SunapiManagerInit(const std::string strIP, const std::string strPW, const std::string& strDeviceID, int nWebPort);
 #else
-	bool SunapiManagerInit(Setting_Infos* infos);
+	void SunapiManagerInit(Setting_Infos* infos);
 #endif
 
 	int GetMaxChannel();
@@ -169,6 +175,8 @@ public:
 	void GetFirmwareVersionInfoView(const std::string& strTopic, json_t* json_strRoot);
 
 	void UpdateFirmwareOfSubdevice(const std::string& strTopic, json_t* json_strRoot);
+
+	bool SUNAPITunnelingCommand(const std::string& strTopic, json_t* json_root);
 
 protected:
 	// reset
@@ -230,7 +238,7 @@ protected:
 	void thread_function_for_storage_status(int channel, const std::string deviceIP, const std::string devicePW);
 
 	void SendResponseForDashboardView(const std::string& strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
-	
+
 	void Set_update_checkForStorageInfo();
 	void Reset_update_checkForStorageInfo();
 	int ThreadStartSendResponseForDashboardView(const std::string strTopic, std::string strCommand, std::string strType, std::string strView, std::string strTid);
@@ -239,7 +247,7 @@ protected:
 
 
 	/////////////////////////////////////////////////////////////////////////////////////////////
-	// 2. deviceinfo view	
+	// 2. deviceinfo view
 
 	// 21.09.06 add - sub device name
 	bool GetDeviceInfoOfSubdevices();
@@ -275,7 +283,7 @@ protected:
 	bool GetLatestFirmwareVersionFromURL(std::string update_FW_Info_url);
 
 	bool GetDataForFirmwareVersionInfo();
-		
+
 	int ThreadStartGetLatestFirmwareVersionFromURL();
 	void thread_function_for_get_latestFirmwareVersion();
 
@@ -312,7 +320,7 @@ private:
 
 	bool g_CheckUpdateOfRegistered;
 	bool g_RetryCheckUpdateOfRegistered;
-	time_t g_UpdateTimeOfRegistered;	
+	time_t g_UpdateTimeOfRegistered;
 
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info - 21.11.04 no longer used
 
@@ -327,5 +335,8 @@ private:
 
 	// firmware version info
 	std::vector< firmware_update_Info> g_vecFirmwareInfos;
+
+	// discovered camera info
+	std::vector< discovered_camera_Info> g_vecDiscoveredCamerasInfos;
 };
 

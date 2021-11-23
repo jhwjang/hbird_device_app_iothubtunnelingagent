@@ -16,9 +16,9 @@ using namespace std;
 using std::this_thread::sleep_for;
 
 // Default timeout is 0 (zero) which means it never times out during transfer.
-//#define CURL_TIMEOUT 10 
+//#define CURL_TIMEOUT 10
 #define CURL_TIMEOUT 0  // for getting info ...
-#define CURL_CONNECTION_TIMEOUT 3  
+#define CURL_CONNECTION_TIMEOUT 3
 
 #if 0
 // QA
@@ -268,7 +268,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	std::cout << "HttpTunnelingCommand() -> type : " << strType << std::endl;
 
 	//////////////////////////////////////////////////////////////////////
-	// root -> json_t* message  
+	// root -> json_t* message
 	json_t* objMessage = json_object_get(json_root, "message");
 
 	if (!json_is_object(objMessage))
@@ -382,7 +382,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	}
 #else
 	///////////////////////////////////////////////////////////////////////////
-	// JANSSON	
+	// JANSSON
 	std::string strHost, strProtocol, strPort;
 	std::string  headerItem;
 
@@ -622,7 +622,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 		// MQTT Message size
 		std::vector<unsigned char> mqttMsgBorderlineByte;
 
-		//std::string strMQTTMsg = writer.write(mqtt_Msg);		
+		//std::string strMQTTMsg = writer.write(mqtt_Msg);
 		std::string strMQTTMsg = json_dumps(mqtt_MainMsg, 0);
 
 		printf("strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
@@ -677,10 +677,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 			size_t writeSize = fwrite(&msgProtocolByte[0], sizeof(unsigned char), msgProtocolByte.size(), Output_fp);
 		}
 		else
-		{		
+		{
 			printf("error ... write httpTunneling_header.txt !!!\n");
 		}
-		
+
 #endif
 
 		// response body
@@ -752,7 +752,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 	std::cout << "SUNAPITunnelingCommand() -> type : " << strType << std::endl;
 
 	//////////////////////////////////////////////////////////////////////
-	// root -> json_t* message  
+	// root -> json_t* message
 	json_t* objMessage = json_object_get(json_root, "message");
 
 	if (!json_is_object(objMessage))
@@ -989,7 +989,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 				else
 				{
 					json_object_set(sub_Msg, "statusCode", json_integer(200));
-					json_object_set(sub_Msg, "body", json_strRoot);						
+					json_object_set(sub_Msg, "body", json_strRoot);
 				}
 			}
 		}
@@ -997,7 +997,7 @@ bool APIManager::SUNAPITunnelingCommand(const std::string& strTopic, json_t* jso
 
 	json_object_set(sub_Msg, "header", json_string(""));
 #if 0
-	send_Msg["command"] = cmd_str;	
+	send_Msg["command"] = cmd_str;
 	send_Msg["type"] = "response";
 	send_Msg["message"] = sub_Msg;
 	send_Msg["tid"] = tid_str;
