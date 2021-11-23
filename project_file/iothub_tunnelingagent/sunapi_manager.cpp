@@ -354,7 +354,6 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 
 	}
 
-	printf("[hwanjang] sunapi_manager::SunapiManagerInit() ... End ... return %d\n", result);
 
 }
 #endif
@@ -1294,10 +1293,9 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			if((long)chunk.size != 0) // 200 ok , 301 moved , 404 error
 			{
 				// OK
-				//strCURLResult = chunk.memory;
 				*strResult = chunk.memory;
 
-				printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequest.c_str(), strResult->c_str());
+				//printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequest.c_str(), strResult->c_str());
 			}
 		}
 		curl_easy_cleanup(curl_handle);
@@ -1307,8 +1305,6 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		printf("error ... initialize cURL !!!\n");
 		res = CURLE_FAILED_INIT;
 	}
-
-	//memcpy(&strResult, chunk.memory, chunk.size);
 
 	if(chunk.memory)
 		free(chunk.memory);
@@ -1742,7 +1738,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 			int result;
 			int i = 0, j = 0;
 			size_t index;
-			char* charStatus, * charIPAddress, * charModel, *charTitle;
+			char* charStatus, * charIPAddress, * charModel, *charTitle, * charMACAddress;
 			bool* IsBypassSupported;
 			json_t* obj;
 
@@ -1975,6 +1971,21 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 							// IsBypassSupported
 							g_Worker_SubDevice_info_[index].IsBypassSupported = IsBypassSupported;
 						}
+
+#if 1 // 2021.11.22 - add MACAddress
+						result = json_unpack(obj, "{s:s}", "MACAddress", &charMACAddress);
+						if (result)
+						{
+							printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 2. json_unpack fail .. MACAddress : %d !!!\n", index);
+							std::cout << "obj string : " << std::endl << json_dumps(obj, 0) << std::endl;
+
+						}
+						else
+						{
+							g_Worker_SubDevice_info_[index].NetworkInterface.MACAddress.clear();
+							g_Worker_SubDevice_info_[index].NetworkInterface.MACAddress = charMACAddress;
+						}
+#endif
 					}
 				}
 			}
@@ -2154,7 +2165,7 @@ void sunapi_manager::GetDashboardView(const std::string& strTopic, json_t* json_
 
 	GetStorageStatusOfSubdevices();
 
-	sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
+	sleep_for(std::chrono::milliseconds(1 * 500));  // after 0.5 sec
 
 	char* strCommand, * strType, * strView, * strTid;
 	int result = json_unpack(json_strRoot, "{s:s, s:s, s:s, s:s}", "command", &strCommand, "type", &strType, "view", &strView, "tid", &strTid);
@@ -2193,7 +2204,7 @@ void sunapi_manager::GetDeviceInfoView(const std::string& strTopic, json_t* json
 	// add Device Name
 	GetDeviceInfoOfSubdevices();
 
-	sleep_for(std::chrono::milliseconds(1 * 1000));  // after 1 sec
+	sleep_for(std::chrono::milliseconds(1 * 500));  // after 0.5 sec
 
 	char* strCommand, * strType, * strView, * strTid;
 	bool result = json_unpack(json_strRoot, "{s:s, s:s, s:s, s:s}", "command", &strCommand, "type", &strType, "view", &strView, "tid", &strTid);
