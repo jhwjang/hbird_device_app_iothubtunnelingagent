@@ -181,6 +181,9 @@ public:
 	bool SUNAPITunnelingCommand(const std::string& strTopic, json_t* json_root);
 
 protected:
+
+	void debug_check(std::string file_name);
+
 	// reset
 	void ResetGatewayInfo();
 	void ResetNetworkInterfaceOfGateway();
@@ -287,9 +290,6 @@ protected:
 	bool GetLatestFirmwareVersionFromFile(std::string file_name, int skip_time);
 	bool GetLatestFirmwareVersionFromURL(std::string update_FW_Info_url, std::string fileName);
 
-	int ThreadStartGetLatestFirmwareVersionFromURL();
-	void thread_function_for_get_latestFirmwareVersion();
-
 	void Set_update_check_Firmware_Ver_info_ForFirmwareVersion();
 	void Reset_update_check_Firmware_Ver_info_ForFirmwareVersion();
 
@@ -322,12 +322,16 @@ protected:
 	void UpdateDataForStorageInfo();
 	// 2. periodic update for device info
 	void UpdateDataForDeviceInfo();
+	bool PeriodicUpdateDeviceInfoOfSubdevices();
+
 	// 3. periodic update for firmware version info
 	void UpdateDataForFirmwareVersionInfo(int skip_time);
 	bool update_firmware_info_file(std::string info_file, std::string temp_file);
 
 private:
 	int g_Max_Channel;
+	int g_debug_check;
+
 	std::string g_Device_id;
 
 	std::string g_StrDeviceIP;
@@ -337,11 +341,14 @@ private:
 
 	bool g_CheckUpdateOfRegistered;
 	bool g_RetryCheckUpdateOfRegistered;
+	time_t g_checkTimeOfRegisterCamera;
 	time_t g_UpdateTimeOfRegistered;
 	time_t g_UpdateTimeOfDiscovery;
 
 	time_t g_UpdateTimeOfNetworkInterface;  // for 2. device info - 21.11.04 no longer used
 
+	bool g_CheckUpdateForlatestFirmwareVersion;
+	bool g_CheckUpdateForFirmwareVersionOfSubdevices;
 	time_t g_UpdateTimeForFirmwareVersionOfSubdevices; // for 3. firmware version
 	time_t g_UpdateTimeForlatestFirmwareVersion;
 

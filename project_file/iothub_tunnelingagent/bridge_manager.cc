@@ -115,7 +115,7 @@ void BridgeManager::StartBridgeManager(Setting_Infos* infos)
 	std::string strGatewayIP, strGatewayPW;
 	int gatewayPort;
 
-	strGatewayIP = _setting_infos.System_info.gatewayIPAddress;
+	strGatewayIP = _setting_infos.System_info.gatewayLocalHostIPAddress;
 	strGatewayPW = _setting_infos.System_info.gatewayId;
 	strGatewayPW.append(":");
 	strGatewayPW.append(_setting_infos.System_info.gatewayPassword);

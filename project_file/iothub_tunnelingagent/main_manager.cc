@@ -139,7 +139,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 		fprintf(stderr, "error : root\n");
 		fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-		//printf("sunapi_manager::StartMainManager() -> strSUNAPIResult : \n%s\n", strJSONData.c_str());
+		//printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
 		HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
 		return;
@@ -151,14 +151,14 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 		result = json_unpack(json_strRoot, "{s:s, s:s}", "deviceId", &charDeviceId, "deviceKey", &charDeviceKey);
 
 		if (result)
-		{			
+		{
 			HWANJANG_LOG("json_unpack fail .. deviceId or deviceKey in json_strRoot !!!\n");
 			HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
 			exit(1);
 		}
 		else
-		{			
+		{
 			if ((strlen(charDeviceId) != 0) && (strlen(charDeviceKey) != 0))
 			{
 				g_SettingInfo.deviceId = charDeviceId;
@@ -212,7 +212,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 			char* charVersion;
 			result = json_unpack(json_system, "{s:s}", "version", &charVersion);
 			if (result)
-			{				
+			{
 				HWANJANG_LOG("json_unpack fail .. version in systemConfig !!!\n");
 				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 			}
@@ -237,7 +237,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_common, "{s:i}", "web_port", &nWebPort);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. web_port in common !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -253,7 +253,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_common, "{s:s}", "deviceModel", &charDeviceModel);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. deviceModel in common !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -299,7 +299,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_private, "{s:s}", "cg_id", &charGatewayId);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. cg_id in private !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -318,7 +318,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_private, "{s:s}", "cg_password", &charGatewayPassword);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. cg_password in private !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -337,7 +337,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_private, "{s:s}", "cloud_id", &charCloudAccountId);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. cloud_id in private !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -356,7 +356,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 				result = json_unpack(json_sub_private, "{s:s}", "cloud_password", &charCloudAccountPassword);
 
 				if (result)
-				{					
+				{
 					HWANJANG_LOG("json_unpack fail .. cloud_password in private !!!\n");
 					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -390,7 +390,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 			if (result)
 			{
-				
+
 				HWANJANG_LOG("json_unpack fail .. wakeupInterval in configInformation !!!\n");
 				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
 
@@ -472,7 +472,7 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 	}
 	json_decref(json_strRoot);
-	
+
 
 #if 1
 	std::string strDeviceID = g_SettingInfo.deviceId;
@@ -485,8 +485,8 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 		strDeviceID.c_str(), strMac.c_str());
 #endif
 
-	std::string strGatewayIP = "127.0.0.1";  // local 
-	g_SettingInfo.System_info.gatewayIPAddress = "127.0.0.1";  // local 
+	std::string strGatewayIP = "127.0.0.1";  // local
+	g_SettingInfo.System_info.gatewayLocalHostIPAddress = "127.0.0.1";  // local
 	std::string strGatewayPW = g_SettingInfo.System_info.gatewayId;
 	strGatewayPW.append(":");
 	strGatewayPW.append(g_SettingInfo.System_info.gatewayPassword);
@@ -521,17 +521,17 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 			break;
 		}
-	
+
 		case 2:  // broker mode
 		{
 			broker_handler_ = new BrokerManager(broker_group_id, broker_agent_id, broker_agent_key);
 			ThreadStartForbrokerManager();
 			break;
 		}
-	
+
 		default:
 			break;
-	}	
+	}
 #endif
 
 }

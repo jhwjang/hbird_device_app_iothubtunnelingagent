@@ -6,7 +6,7 @@ MQTTManager::MQTTManager(std::string address,
 							std::string id, std::string pw)
 	: gMQTTServerAddress(address),
 	 gDeviceID(id),
-	 gDevicePW(pw)	 
+	 gDevicePW(pw)
 {
 #if 0 // for debug
 	printf("MQTTManager() Create MQTTManager , ID : %s , PW : %s\n ", gDeviceID.c_str(), gDevicePW.c_str());
@@ -62,10 +62,14 @@ void MQTTManager::SendMessageToClient(std::string topic, std::string message, in
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, std::string message)
 {
-#if 1
+#ifdef HWANJANG_DEBUG
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
+	printf("MQTTManager::OnResponseCommandMessage() : message : \n%s\n", message.c_str());
+#else
+	time_t now = time(NULL);
+	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : message : \n%s\n", message.c_str());
 #endif
 
@@ -77,7 +81,7 @@ void MQTTManager::OnResponseCommandMessage(std::string topic, std::string messag
 
 void MQTTManager::OnResponseCommandMessage(std::string topic, const void* payload, int size)
 {
-#if 1  // for debug
+#ifdef HWANJANG_DEBUG  // for debug
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::OnResponseCommandMessage() -> time : %lld\n", now);
 	printf("MQTTManager::OnResponseCommandMessage() : topic : %s\n", topic.c_str());
@@ -96,10 +100,14 @@ void MQTTManager::ReceiveMessageFromPeer(mqtt::const_message_ptr mqttMsg)
 	std::string topic = mqttMsg->get_topic();
 	std::string message = mqttMsg->to_string();
 
-#if 1 // for debug
+#ifdef HWANJANG_DEBUG // for debug
 	time_t now = time(NULL);
 	printf("[hwanjang] MQTTManager::ReceiveMessageFromPeer() -> time : %lld\n", now);
 	printf("[hwanjang] topic : %s\n", topic.c_str());
+	printf("[hwanjang] message : \n%s\n", message.c_str());
+#else
+	time_t now = time(NULL);
+	printf("[hwanjang] MQTTManager::ReceiveMessageFromPeer() -> time : %lld\n", now);
 	printf("[hwanjang] message : \n%s\n", message.c_str());
 #endif
 

@@ -9,7 +9,7 @@ typedef struct _systemConfig_Info {
 	int https_port;
 	std::string deviceModel;
 	//privqte
-	std::string gatewayIPAddress;
+	std::string gatewayLocalHostIPAddress;
 	std::string gatewayId;
 	std::string gatewayPassword;
 	std::string cloudAccountId;
