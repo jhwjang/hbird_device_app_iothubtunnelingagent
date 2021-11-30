@@ -120,6 +120,7 @@ sunapi_manager::~sunapi_manager()
 void sunapi_manager::debug_check(std::string file_name)
 {
 	g_debug_check = 0;
+	g_debug_storage = 0;
 
 	json_error_t err;
 	json_t* json_root = json_load_file(file_name.c_str(), 0, &err);
@@ -129,7 +130,7 @@ void sunapi_manager::debug_check(std::string file_name)
 		return ;
 	}
 
-	// get Model
+	// get debug
 	int nDebug;
 	int result = json_unpack(json_root, "{s:i}", "debug", &nDebug);
 
@@ -143,6 +144,22 @@ void sunapi_manager::debug_check(std::string file_name)
 		g_debug_check = nDebug;
 
 		printf("GetDeviceInfoOfGateway() -> g_debug_check : %d\n", g_debug_check);
+	}
+
+	// get storageinfo
+	int nStorage;
+	result = json_unpack(json_root, "{s:i}", "storageinfo", &nStorage);
+
+	if (result)
+	{
+		printf("[hwanjang] Error !! debug_check() -> 1. json_unpack fail .. debug ...\n");
+		printf("debug_check() -> json_root : \n%s\n", json_dumps(json_root, 0));
+	}
+	else
+	{
+		g_debug_storage = nStorage;
+
+		printf("GetDeviceInfoOfGateway() -> g_debug_storage : %d\n", g_debug_storage);
 	}
 }
 
@@ -1558,13 +1575,20 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 #else
 				if (g_debug_check == 1)
 				{
-					if (strRequest.find("storageinfo") != std::string::npos)
+					if (g_debug_storage == 1)
 					{
-						printf("sunapi_manager::CURL_Process() -> request : %s ... result ... skip !!\n ", strRequest.c_str());
+						printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequest.c_str(), strResult->c_str());
 					}
 					else
 					{
-						printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequest.c_str(), strResult->c_str());
+						if (strRequest.find("storageinfo") != std::string::npos)
+						{
+							printf("sunapi_manager::CURL_Process() -> request : %s ... result ... skip !!\n ", strRequest.c_str());
+						}
+						else
+						{
+							printf("sunapi_manager::CURL_Process() -> request : %s\n strResult : \n%s\n", strRequest.c_str(), strResult->c_str());
+						}
 					}
 				}
 #endif

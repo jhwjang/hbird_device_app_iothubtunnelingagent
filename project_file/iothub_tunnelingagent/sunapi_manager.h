@@ -331,6 +331,7 @@ protected:
 private:
 	int g_Max_Channel;
 	int g_debug_check;
+	int g_debug_storage;
 
 	std::string g_Device_id;
 
