@@ -341,7 +341,7 @@ private:
 
 
 	bool g_CheckUpdateOfRegistered;
-	bool g_RetryCheckUpdateOfRegistered;
+	int g_RetryCountCheckUpdateOfRegistered;
 	time_t g_checkTimeOfRegisterCamera;
 	time_t g_UpdateTimeOfRegistered;
 	time_t g_UpdateTimeOfDiscovery;

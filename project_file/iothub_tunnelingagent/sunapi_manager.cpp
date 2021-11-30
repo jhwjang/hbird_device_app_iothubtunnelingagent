@@ -27,6 +27,7 @@ using std::this_thread::sleep_for;
 #define CURL_TIMEOUT 0
 #define CURL_CONNECTION_TIMEOUT 3
 #define SKIP_TIME_LATEST_INFO 1000  // skip 15 min
+#define RETRY_COUNT_CHECK_REGISTERED 4
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
@@ -69,8 +70,7 @@ sunapi_manager::sunapi_manager()
 	g_ConnectionCnt = 0;
 
 	g_CheckUpdateOfRegistered = true;
-	g_RetryCheckUpdateOfRegistered = false;
-	g_checkTimeOfRegisterCamera = 0;
+	g_RetryCountCheckUpdateOfRegistered = 0;
 	g_UpdateTimeOfRegistered = 0;
 	g_UpdateTimeOfDiscovery = 0;
 
@@ -442,7 +442,7 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 
 	if (!result)
 	{
-		printf("\n ### Warning !!!!! failed to get UpdateFirmwareVersionInfo() ... requset again !!!!!!!!!!\n");
+		printf("\n ### Warning !!!!! failed to get UpdateFirmwareVersionInfoFromFile() ... requset again !!!!!!!!!!\n");
 
 		sleep_for(std::chrono::milliseconds(1 * 1000));
 
@@ -450,7 +450,7 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 
 		if (!result)
 		{
-			printf("### Warning !!!!! UpdateFirmwareVersionInfo() .. again ... failed to get UpdateFirmwareVersionInfo !!!!!!!!!!!!!\n ");
+			printf("### Warning !!!!! UpdateFirmwareVersionInfoFromFile() .. again ... failed to get UpdateFirmwareVersionInfo !!!!!!!!!!!!!\n ");
 		}
 	}
 
@@ -463,41 +463,69 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 #else
 
 	// Get ConnectionStatus of subdevice
+	g_RetryCountCheckUpdateOfRegistered = 1;
+
 	CURLcode resCode;
 	result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 
 	if (!result)
 	{
-		printf("failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+#ifdef HWANJANG_DEBUG
+		printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+#else
+		if (g_debug_check == 1)
+		{
+			printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+		}
+#endif
 
-		int retry_count = 0;
 		while (1)
 		{
-			sleep_for(std::chrono::milliseconds(1 * 1000)); // 1 sec
+			sleep_for(std::chrono::milliseconds(1 * 500)); // 0.5 sec
+
+			g_RetryCountCheckUpdateOfRegistered++;
+
+#ifdef HWANJANG_DEBUG
+			printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+			if (g_debug_check == 1)
+			{
+				printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+			}
+#endif
 
 			result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 			if (result)
 			{
+#ifdef HWANJANG_DEBUG
+				printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+				if (g_debug_check == 1)
+				{
+					printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+				}
+#endif
+				g_RetryCountCheckUpdateOfRegistered = 0;
 				break;
 			}
 			else
 			{
-				retry_count++;
-				printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", retry_count);
-			}
+				if (g_RetryCountCheckUpdateOfRegistered > RETRY_COUNT_CHECK_REGISTERED)
+				{
+#ifdef HWANJANG_DEBUG
+					printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+					if (g_debug_check == 1)
+					{
+						printf("[hwanjang] sunapi_manager::SunapiManagerInit() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+					}
+#endif
 
-			if (retry_count > 2)
-			{
-				printf("failed to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", retry_count);
-				break;
-			}
-
-			if (g_RetryCheckUpdateOfRegistered == true)
-			{
-				g_RetryCheckUpdateOfRegistered = false;
+					g_RetryCountCheckUpdateOfRegistered = 0;
+					break;
+				}
 			}
 		}
-
 	}
 
 #if 0	// request camera discovery fot getting camera info
@@ -1951,18 +1979,6 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 		g_CheckUpdateOfRegistered = false;
 		g_UpdateTimeOfRegistered = update_time;
 
-		printf("GetRegiesteredCameraStatus() ->  g_checkTimeOfRegisterCamera : %lld ... diff time : %lld\n", g_checkTimeOfRegisterCamera, (update_time - g_checkTimeOfRegisterCamera));
-
-		if ((update_time - g_checkTimeOfRegisterCamera) < 2)
-		{
-			if (g_debug_check == 1)
-			{
-				printf("GetRegiesteredCameraStatus() ->  g_checkTimeOfRegisterCamera : %lld ... diff time : %lld ... so waiting !!!!\n", g_checkTimeOfRegisterCamera, (update_time - g_checkTimeOfRegisterCamera));
-			}
-
-			sleep_for(std::chrono::milliseconds(1000)); // 1 sec
-		}
-
 #ifdef HWANJANG_DEBUG
 		std::cout << "GetRegiesteredCameraStatus() -> Start ... time : " << (long int)update_time << std::endl;
 #else
@@ -2015,14 +2031,26 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 
 		if (res == CURLE_OK)
 		{
+#ifdef HWANJANG_DEBUG
 			time_t end_time = time(NULL);
+
 			std::cout << "GetRegiesteredCameraStatus() -> CURLE_OK !! Received data , time : " << (long int)end_time << " , diff : "
 				<< (long int)(end_time - update_time) << std::endl;
+#else
+			if (g_debug_check == 1)
+			{
+				time_t end_time = time(NULL);
+
+				std::cout << "GetRegiesteredCameraStatus() -> CURLE_OK !! Received data , time : " << (long int)end_time << " , diff : "
+					<< (long int)(end_time - update_time) << std::endl;
+			}
+#endif
 
 			if (strSUNAPIResult.empty())
 			{
+#ifdef HWANJANG_DEBUG
 				printf("[hwanjang] GetRegiesteredCameraStatus() result string is empty !!!\n");
-
+#endif
 				g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
 
 				return false;
@@ -2038,8 +2066,9 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 				fprintf(stderr, "error : root\n");
 				fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
+#ifdef HWANJANG_DEBUG
 				printf("strSUNAPIResult : \n%s\n", strSUNAPIResult.c_str());
-
+#endif
 				g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
 
 				return false;
@@ -2070,8 +2099,16 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 
 				if (result)
 				{
+#ifdef HWANJANG_DEBUG
 					printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 1. json_unpack fail .. Status ..index : %d !!!\n", index);
 					std::cout << "obj string : " << std::endl << json_dumps(obj, 0) << std::endl;
+#else
+					if (g_debug_check == 1)
+					{
+						printf("[hwanjang] Error !! GetRegiesteredCameraStatus -> 1. json_unpack fail .. Status ..index : %d !!!\n", index);
+						std::cout << "obj string : " << std::endl << json_dumps(obj, 0) << std::endl;
+					}
+#endif
 				}
 				else
 				{
@@ -2079,6 +2116,7 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 					printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , charStatus : %s , strlen : %d\n",
 						index, charStatus, strlen(charStatus));
 #endif
+
 					g_Worker_SubDevice_info_[index].ConnectionStatus.clear();
 
 					if (strncmp("Success", charStatus, 7) == 0)
@@ -2160,11 +2198,10 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 					}
 					else if (strncmp("Unknown", charStatus, 7) == 0)
 					{
-						if (g_RetryCheckUpdateOfRegistered == false)
+						if (g_RetryCountCheckUpdateOfRegistered  < RETRY_COUNT_CHECK_REGISTERED + 1)
 						{
 							printf("GetRegiesteredCameraStatus() -> channel : %d , Start to get registered camera's info ... unknown ... try again !!! \n", index);
 
-							g_RetryCheckUpdateOfRegistered = true;
 							g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
 
 							return false;
@@ -2183,11 +2220,10 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 					else if(strlen(charStatus) == 0)
 					{
 						// ?????
-						if (g_RetryCheckUpdateOfRegistered == false)
+						if (g_RetryCountCheckUpdateOfRegistered < RETRY_COUNT_CHECK_REGISTERED + 1)
 						{
 							printf("GetRegiesteredCameraStatus() -> channel : %d , Start to get registered camera's info ... try again !!! \n", index);
 
-							g_RetryCheckUpdateOfRegistered = true;
 							g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
 
 							return false;
@@ -2218,13 +2254,35 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 					else
 					{
 						// ?????
-						g_RegisteredCameraCnt++;
+						if (g_RetryCountCheckUpdateOfRegistered < RETRY_COUNT_CHECK_REGISTERED + 1)
+						{
+							printf("GetRegiesteredCameraStatus() -> channel : %d , Start to get registered camera's info ... try again !!! \n", index);
 
-						printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status : %s ?????? unknown , g_RegisteredCameraCnt : %d @@@@@@@\n", index, charStatus, g_RegisteredCameraCnt);
+							g_UpdateTimeOfRegistered = 0;  // if fail -> set 0
 
-						g_Worker_SubDevice_info_[index].ConnectionStatus.clear();
-						g_Worker_SubDevice_info_[index].ConnectionStatus = charStatus;
-						g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error
+							return false;
+						}
+
+						printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , Status : %s ????????????????\n", index, charStatus);
+
+						result = json_unpack(obj, "{s:s}", "IPAddress", &charIPAddress);
+						if (result)
+						{
+							printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , IPAddress is empty , error @@@@@@@\n", index);
+							g_Worker_SubDevice_info_[index].ConnectionStatus.clear();
+							g_Worker_SubDevice_info_[index].ConnectionStatus = charStatus;
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error
+						}
+						else
+						{
+							g_RegisteredCameraCnt++;
+
+							printf("[hwanjang] GetRegiesteredCameraStatus -> index : %d , IPAddress : %s , Status : %s , ????? unknown , g_RegisteredCameraCnt : %d @@@@@@@\n", index, charIPAddress, charStatus, g_RegisteredCameraCnt);
+
+							g_Worker_SubDevice_info_[index].ConnectionStatus.clear();
+							g_Worker_SubDevice_info_[index].ConnectionStatus = charStatus;
+							g_Worker_SubDevice_info_[index].CheckConnectionStatus = 6;  // error
+						}
 					}
 
 					// update device info of registered camera
@@ -2455,50 +2513,78 @@ void sunapi_manager::GetDataForDashboardAPI(const std::string& strTopic, const s
 			printf("GetDataForDashboardAPI() -> start time : %lld , received charCommand : %s ... \n", start_time, charCommand);
 		}
 #endif
+		g_RetryCountCheckUpdateOfRegistered = 1;
+
 		CURLcode resCode;
 		bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 
 		if (!result)
 		{
-			printf("failed to get GetRegiesteredCameraStatus ... 1\n");
-
-			sleep_for(std::chrono::milliseconds(200));
-
-			result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
-
-			if (g_RetryCheckUpdateOfRegistered == true)
+#ifdef HWANJANG_DEBUG
+			printf("sunapi_manager::GetDataForDashboardAPI() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+#else
+			if (g_debug_check == 1)
 			{
-				g_RetryCheckUpdateOfRegistered = false;
+				printf("sunapi_manager::GetDataForDashboardAPI() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
 			}
+#endif
 
-			if (!result)
+			while (1)
 			{
-				std::string strError;
+				sleep_for(std::chrono::milliseconds(1 * 200)); // 0.2 sec
 
-				printf("failed to get GetRegiesteredCameraStatus ... 2 ... return !!\n");
+				g_RetryCountCheckUpdateOfRegistered++;
 
-				if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
+#ifdef HWANJANG_DEBUG
+				printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+				if (g_debug_check == 1)
 				{
-					// authfail
-					strError = "authError";
-				}
-				else if (resCode == CURLE_OPERATION_TIMEDOUT)
+					printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+			}
+#endif
+				result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
+				if (result)
 				{
-					// timeout
-					strError = "timeout";
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::GetDataForDashboardAPI() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+					if (g_debug_check == 1)
+					{
+						printf("sunapi_manager::GetDataForDashboardAPI() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+					}
+#endif
+					g_RetryCountCheckUpdateOfRegistered = 0;
+					break;
 				}
-				else {
-					// another error
-					//strError = "unknown";
-					strError = curl_easy_strerror(resCode);
+				else
+				{
+					if (g_RetryCountCheckUpdateOfRegistered > RETRY_COUNT_CHECK_REGISTERED)  // retry 5 times
+					{
+#ifdef HWANJANG_DEBUG
+						printf("sunapi_manager::GetDataForDashboardAPI() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+						if (g_debug_check == 1)
+						{
+							printf("sunapi_manager::GetDataForDashboardAPI() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+						}
+#endif
+						g_RetryCountCheckUpdateOfRegistered = 0;
+						break;
+					}
 				}
-
-				SendErrorResponseForGateway(strTopic, json_strRoot, strError);
-
-				json_decref(json_strRoot);
-				return;
 			}
 		}
+
+
+#ifdef HWANJANG_DEBUG
+		printf("GetDataForDashboardAPI() -> GetRegiesteredCameraStatus ... next ... time : %lld \n", time(NULL));
+#else
+		if (g_debug_check == 1)
+		{
+			printf("GetDataForDashboardAPI() -> GetRegiesteredCameraStatus ... next ... time : %lld \n", time(NULL));
+		}
+#endif
 
 		if (strncmp("dashboard", charCommand, 9) == 0)
 		{
@@ -3660,7 +3746,10 @@ void sunapi_manager::SendResponseForDashboardView(const std::string& strTopic, s
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	//printf("SendStorageInfoForDashboardView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	if (g_debug_check == 1)
+	{
+		printf("SendStorageInfoForDashboardView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	}
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 }
@@ -4892,7 +4981,10 @@ void sunapi_manager::SendResponseForDeviceInfoView(const std::string& strTopic, 
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	//printf("SendResponseForDeviceInfoView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	if (g_debug_check == 1)
+	{
+		printf("SendResponseForDeviceInfoView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	}
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 #endif
@@ -6213,7 +6305,10 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-	//printf("SendResponseForFirmwareView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	if (g_debug_check == 1)
+	{
+		printf("SendResponseForFirmwareView() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	}
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
 }
@@ -6226,7 +6321,6 @@ void sunapi_manager::SendResponseForFirmwareView(const std::string& strTopic, st
 void sunapi_manager::SendResponseForUpdateFirmware(const std::string& strTopic,
 			std::string strCommand, std::string strType, std::string strView, std::string strTid, int resCode, int rawCode, std::vector<int> updateChannel)
 {
-#if 1
 	std::string strVersion = "1.5";
 	// sub of message
 	std::string strDeviceType = HBIRD_DEVICE_TYPE;
@@ -6282,13 +6376,12 @@ void sunapi_manager::SendResponseForUpdateFirmware(const std::string& strTopic,
 	//std::string strMQTTMsg = writer.write(mqtt_Msg);
 	std::string strMQTTMsg = json_dumps(main_ResponseMsg, 0);
 
-#ifdef HWANJANG_DEBUG
-	printf("SendResponseForUpdateFirmware() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
-#endif
+	if (g_debug_check == 1)
+	{
+		printf("SendResponseForUpdateFirmware() -> strMQTTMsg size : %lu\n%s\n", strMQTTMsg.size(), strMQTTMsg.c_str());
+	}
 
 	observerForHbirdManager->SendResponseForDashboard(strTopic, strMQTTMsg);
-#endif
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -6316,34 +6409,80 @@ void sunapi_manager::thread_function_for_periodic_check(int second, bool repetit
 #endif
 
 	// Get ConnectionStatus of subdevice
+	g_RetryCountCheckUpdateOfRegistered = 1;
+
 	CURLcode resCode;
 	bool result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 
 	if (!result)
 	{
-		printf("failed to get GetRegiesteredCameraStatus ... 1 ...\n");
-
-		sleep_for(std::chrono::milliseconds(1 * 1000)); // 1 sec
-
-		result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
-		if (!result)
+#ifdef HWANJANG_DEBUG
+		printf("sunapi_manager::thread_function_for_periodic_check() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
+#else
+		if (g_debug_check == 1)
 		{
-			printf("failed to get GetRegiesteredCameraStatus ... 2 ... return !!\n");
-
-			if ((resCode == CURLE_LOGIN_DENIED) || (resCode == CURLE_AUTH_ERROR))
-			{
-				// authfail
-			}
-			else if (resCode == CURLE_OPERATION_TIMEDOUT)
-			{
-				// timeout
-			}
-			else {
-				// another error
-
-			}
+			printf("sunapi_manager::thread_function_for_periodic_check() -> failed to get GetRegiesteredCameraStatus ... 1 ...\n");
 		}
+#endif
+
+		while (1)
+		{
+			sleep_for(std::chrono::milliseconds(1 * 200)); // 0.2 sec
+
+			g_RetryCountCheckUpdateOfRegistered++;
+
+#ifdef HWANJANG_DEBUG
+			printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+			if (g_debug_check == 1)
+			{
+				printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
+			}
+#endif
+
+			result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
+			if (result)
+			{
+#ifdef HWANJANG_DEBUG
+				printf("sunapi_manager::thread_function_for_periodic_check() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+				if (g_debug_check == 1)
+				{
+					printf("sunapi_manager::thread_function_for_periodic_check() -> success to get GetRegiesteredCameraStatus ... 3 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+				}
+#endif
+				g_RetryCountCheckUpdateOfRegistered = 0;
+				break;
+			}
+			else
+			{
+				if (g_RetryCountCheckUpdateOfRegistered > RETRY_COUNT_CHECK_REGISTERED)  // retry 5 times
+				{
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::thread_function_for_periodic_check() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+#else
+					if (g_debug_check == 1)
+					{
+						printf("sunapi_manager::thread_function_for_periodic_check() -> failed to get GetRegiesteredCameraStatus ... 4 ... retry : %d --> break !!\n", g_RetryCountCheckUpdateOfRegistered);
+					}
+#endif
+					g_RetryCountCheckUpdateOfRegistered = 0;
+					break;
+				}
+			}
+				}
+			}
+
+
+#ifdef HWANJANG_DEBUG
+	printf("thread_function_for_periodic_check() -> GetRegiesteredCameraStatus ... next ... time : %lld \n", time(NULL));
+#else
+	if (g_debug_check == 1)
+	{
+		printf("thread_function_for_periodic_check() -> GetRegiesteredCameraStatus ... next ... time : %lld \n", time(NULL));
 	}
+#endif
+
 
 #if 0	// request camera discovery fot getting camera info
 	result = RequestCameraDiscovery();
@@ -7053,10 +7192,9 @@ bool sunapi_manager::SUNAPITunnelingCommand(const std::string& strTopic, json_t*
 		{
 			g_UpdateTimeOfRegistered = 1;  // first time
 
-			g_checkTimeOfRegisterCamera = time(NULL);
 			g_UpdateTimeForFirmwareVersionOfSubdevices = 0;
 
-			sleep_for(std::chrono::milliseconds(100));
+			sleep_for(std::chrono::milliseconds(200));
 		}
 
 #ifdef HWANJANG_DEBUG
