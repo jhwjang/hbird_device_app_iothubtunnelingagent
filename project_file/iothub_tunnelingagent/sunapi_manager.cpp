@@ -69,6 +69,7 @@ sunapi_manager::sunapi_manager()
 	g_RegisteredCameraCnt = 0;
 	g_ConnectionCnt = 0;
 
+	g_CheckNeedSleepForRequest = true;
 	g_CheckUpdateOfRegistered = true;
 	g_RetryCountCheckUpdateOfRegistered = 0;
 	g_UpdateTimeOfRegistered = 0;
@@ -152,7 +153,7 @@ void sunapi_manager::debug_check(std::string file_name)
 
 	if (result)
 	{
-		printf("[hwanjang] Error !! debug_check() -> 1. json_unpack fail .. debug ...\n");
+		printf("[hwanjang] Error !! debug_check() -> 2. json_unpack fail .. storageinfo ...\n");
 		printf("debug_check() -> json_root : \n%s\n", json_dumps(json_root, 0));
 	}
 	else
@@ -377,12 +378,15 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 
 	if (!result)
 	{
-		printf("failed to get GetGatewayInfo ... 1 ...\n");
+		printf("failed to get GetGatewayInfo ... 1 ... time : %lld\n", time(NULL));
 
 		int retry_count_gatewayInfo = 0;
 		while (1)
 		{
 			sleep_for(std::chrono::milliseconds(1 * 1000)); // 1 sec
+
+			retry_count_gatewayInfo++;
+			printf("failed to get GetGatewayInfo ... 2 ... retry : %d , time : %lld !!\n", retry_count_gatewayInfo, time(NULL));
 
 			result = GetGatewayInfo(g_StrDeviceIP, g_StrDevicePW);
 			if (result)
@@ -391,14 +395,11 @@ void sunapi_manager::SunapiManagerInit(Setting_Infos* infos)
 			}
 			else
 			{
-				retry_count_gatewayInfo++;
-				printf("failed to get GetGatewayInfo ... 2 ... retry : %d !!\n", retry_count_gatewayInfo);
-			}
-
-			if (retry_count_gatewayInfo > 2)
-			{
-				printf("failed to get GetGatewayInfo ... 3 ... retry : %d --> break !!\n", retry_count_gatewayInfo);
-				break;
+				if (retry_count_gatewayInfo > 2)
+				{
+					printf("failed to get GetGatewayInfo ... 3 ... retry : %d --> break , time : %lld !!\n", retry_count_gatewayInfo, time(NULL));
+					break;
+				}
 			}
 		}
 	}
@@ -1979,6 +1980,16 @@ bool sunapi_manager::GetRegiesteredCameraStatus(const std::string deviceIP, cons
 		g_CheckUpdateOfRegistered = false;
 		g_UpdateTimeOfRegistered = update_time;
 
+		// 21.12.02 hwanjang - check registeredcamera
+		if (g_CheckNeedSleepForRequest == true)
+		{
+			g_CheckNeedSleepForRequest = false;
+
+			printf("GetRegiesteredCameraStatus() -> Start ... time : %lld, sleep ... \n", update_time);
+
+			sleep_for(std::chrono::milliseconds(300));
+		}
+
 #ifdef HWANJANG_DEBUG
 		std::cout << "GetRegiesteredCameraStatus() -> Start ... time : " << (long int)update_time << std::endl;
 #else
@@ -2541,7 +2552,7 @@ void sunapi_manager::GetDataForDashboardAPI(const std::string& strTopic, const s
 				if (g_debug_check == 1)
 				{
 					printf("failed to get GetRegiesteredCameraStatus ... 2 ... retry : %d !!\n", g_RetryCountCheckUpdateOfRegistered);
-			}
+				}
 #endif
 				result = GetRegiesteredCameraStatus(g_StrDeviceIP, g_StrDevicePW, &resCode);
 				if (result)
@@ -7187,13 +7198,16 @@ bool sunapi_manager::SUNAPITunnelingCommand(const std::string& strTopic, json_t*
 
 	if (strRepuest.find("cameraregister") != std::string::npos)
 	{
-		if ((strRepuest.find("add") != std::string::npos)
-			|| (strRepuest.find("remove") != std::string::npos))
+		g_CheckNeedSleepForRequest = true;
+		g_UpdateTimeOfRegistered = 1;  // first time
+		g_UpdateTimeForFirmwareVersionOfSubdevices = 0;
+
+		if(strRepuest.find("remove") != std::string::npos)
 		{
-			g_UpdateTimeOfRegistered = 1;  // first time
-
-			g_UpdateTimeForFirmwareVersionOfSubdevices = 0;
-
+			sleep_for(std::chrono::milliseconds(100));
+		}
+		else
+		{
 			sleep_for(std::chrono::milliseconds(200));
 		}
 

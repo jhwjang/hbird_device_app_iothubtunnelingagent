@@ -339,7 +339,7 @@ private:
 	std::string g_StrDevicePW;
 	int g_HttpsPort;
 
-
+	bool g_CheckNeedSleepForRequest;
 	bool g_CheckUpdateOfRegistered;
 	int g_RetryCountCheckUpdateOfRegistered;
 	time_t g_checkTimeOfRegisterCamera;

@@ -13,18 +13,18 @@
 	#define _HBIRD_APPLE
 #endif
 
-#define CRYPTO_VERSION_STRING "0.0.3"
+#define CRYPTO_VERSION_STRING "0.0.4"
 #define CRYPTO_VERSION_MAJOR 0
 #define CRYPTO_VERSION_MINOR 0
-#define CRYPTO_VERSION_PATCH 3
+#define CRYPTO_VERSION_PATCH 4
 #define CRYPTO_VERSION_QUALIFIER
 #define CRYPTO_VERSION_HEXA	((CRYPTO_VERSION_MAJOR << 24) | \
 							(CRYPTO_VERSION_MINOR << 16) |  \
 							(CRYPTO_VERSION_PATCH << 8))
 
-#define IN 
+#define IN
 #define OUT
-#define INOUT 
+#define INOUT
 
 #ifdef _HBIRD_WIN
 	#define HBIRDCRYPTO_ATTRS(x)
@@ -41,15 +41,14 @@
 #define __CRYPT_SIZE_512__ 512
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(HBIRDCRYPTODLL_EXPORTS)
 #		define _HBIRDCRYPTODLL_EXPORTS 	__declspec( dllexport )
 #else
 #		define _HBIRDCRYPTODLL_EXPORTS
-#endif
-
-#if 1
-#ifdef __cplusplus
-extern "C" {
 #endif
 
 
@@ -63,16 +62,18 @@ typedef enum {
 typedef struct HBirdCryptoStruct {
 
 	size_t				mCryptSize;	// unit: bits
-	
+
 	void*				pPW;
 	void*				pSaltStruct;
 } HBirdCrypto, *pHBirdCrypto;
 
 
 
+_HBIRDCRYPTODLL_EXPORTS void HBirdCrypto_Version_0_0_4();
+
 /******************************************************************************
  * Function Name : HBirdCrypto_Create
- * 
+ *
  * Return Value Description
  *	NULL : error
  *
@@ -121,7 +122,7 @@ _HBIRDCRYPTODLL_EXPORTS int encrypt_Text_C(IN pHBirdCrypto pCrypto,
  *
  * Comment :
 ******************************************************************************/
-_HBIRDCRYPTODLL_EXPORTS int decrypt_Text_C(IN pHBirdCrypto pCrypto, 
+_HBIRDCRYPTODLL_EXPORTS int decrypt_Text_C(IN pHBirdCrypto pCrypto,
 										IN const char* pEncText, IN const int nEncTextSize,
 										INOUT char** pPlainText, INOUT int* nPlainTextSize,
 										IN const char* pPassword, IN const int nPasswordLength);
@@ -150,10 +151,8 @@ _HBIRDCRYPTODLL_EXPORTS int decrypt_File_C(IN pHBirdCrypto pCrypto,
 										IN const char* pPlainFilePath, IN const int nPlainFilePathSize,
 										IN const char* pPassword, IN const int nPasswordLength);
 
-
 #ifdef __cplusplus
 }
-#endif
 #endif
 
 #endif  //__HBIRDCRYPTO_HBIRDCRYPTO_H__
