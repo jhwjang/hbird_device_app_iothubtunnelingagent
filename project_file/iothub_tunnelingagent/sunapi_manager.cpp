@@ -31,7 +31,12 @@ using std::this_thread::sleep_for;
 
 #define DEFAULT_MAX_CHANNEL 128  // support max 128 channels
 
+#if 0 // 21.12.07 - old
 #define UPDATE_FIRMWARE_INFO_URL "https://update.websamsung.net/FW/Update_FW_Info3.txt"
+#else
+#define UPDATE_FIRMWARE_INFO_URL "https://update.hanwha-security.com/FW/Update_FW_Info.txt"
+#endif
+
 #define TEMP_FIRMWARE_INFO_FILE "temp_fw_info.txt"
 #define FIRMWARE_INFO_FILE "fw_info.txt"
 #define CA_FILE_PATH "config/ca-certificates.crt"
