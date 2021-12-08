@@ -373,25 +373,14 @@ int main(int argc, char* argv[])
 	{
 		memcpy(&szHalfPassword, argv[2], strlen(argv[2]));
 	}
-#if 0
+
 	int original_JsonSize = std::atoi(argv[3]);
 	int enc_BinarySize = std::atoi(argv[4]);
-#else
-	int original_JsonSize = 5196;
-	int enc_BinarySize = 5196;
 
-	int nArgv3 = std::atoi(argv[3]);
-	if (nArgv3 > 0)
-		original_JsonSize = nArgv3;
-
-	int nArgv4 = std::atoi(argv[4]);
-	if(nArgv4 > 0)
-		enc_BinarySize = nArgv4;
-#endif
 
 	int enc_StringSize = strlen(argv[5]);
 	char* szEncString;
-	szEncString = (char*)calloc(enc_StringSize, sizeof(char));
+	szEncString = (char*)calloc(enc_StringSize+1, sizeof(char));
 
 	memcpy(szEncString, argv[5], enc_StringSize);
 
