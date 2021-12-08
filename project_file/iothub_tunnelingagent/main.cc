@@ -51,9 +51,15 @@ bool Check_Bind()
 	if( ::bind(sock, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) == -1)
 	{
 		std::cout << "Binding Unsuccessful" << std::endl;
+		closesocket(sock);
+		WSACleanup();
+
 		exit(1);
 	}
 	std::cout << "Binding successful" << std::endl;
+
+	closesocket(sock);
+	WSACleanup();
 
 	return true;
 }
