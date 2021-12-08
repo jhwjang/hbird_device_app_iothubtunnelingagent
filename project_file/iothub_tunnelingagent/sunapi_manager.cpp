@@ -5892,6 +5892,16 @@ bool sunapi_manager::UpdateContainerForLatestFirmwareVersionInfo(std::string fil
 	std::vector<std::string> str_result;
 	Firmware_Infos firmware_info;
 
+	// 2021.12.08 - init
+	firmware_info.update_check = false;
+	firmware_info.curl_responseCode = 0;
+	firmware_info.model.clear();
+	firmware_info.product.clear();
+	firmware_info.extension.clear();
+	firmware_info.representative_model.clear();
+	firmware_info.fileName.clear();
+	firmware_info.version_info.clear();
+
 	std::string line;
 
 	int cnt = 0;
@@ -5926,7 +5936,7 @@ bool sunapi_manager::UpdateContainerForLatestFirmwareVersionInfo(std::string fil
 	bool result = true;
 	if (g_vecFirmwareInfos.size() < 1)
 	{
-		result =  false;
+		result = false;
 	}
 
 #ifdef HWANJANG_DEBUG
