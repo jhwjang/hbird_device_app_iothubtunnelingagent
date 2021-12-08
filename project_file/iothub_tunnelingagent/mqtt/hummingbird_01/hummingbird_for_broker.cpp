@@ -163,7 +163,8 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 		curr_hour, curr_minute, curr_second);
 
 #endif
-	int sec;
+	int sec = 10; // default 10 sec;
+
     time_t now_sec, diff_sec;
     
     //now_sec = tspec.tv_sec;
