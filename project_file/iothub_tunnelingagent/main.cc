@@ -159,8 +159,12 @@ void Checkfilelock()
 		printf("Checkfilelock() -> %s\n", log_data);
 		WriteLog(log_data);
 
+		CloseHandle(indexHandle);
+
 		exit(EXIT_FAILURE);
 	}
+
+	CloseHandle(indexHandle);
 }
 #else
 
