@@ -64,6 +64,8 @@ HummingbirdMqttInterface::HummingbirdMqttInterface(
   hub_pw_ = pw;
    
   connection_status = false;
+
+  _bird = nullptr;
 }
 
 HummingbirdMqttInterface::~HummingbirdMqttInterface()

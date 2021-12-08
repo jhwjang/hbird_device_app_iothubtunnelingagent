@@ -3117,7 +3117,7 @@ void sunapi_manager::GetNASPresenceOfSubdevice(int channel, const std::string de
 #ifdef HWANJANG_DEBUG
 			printf("strByPassResult : %s\n", strByPassResult.c_str());
 #endif
-			if ((strByPassResult.find("True")) || (strByPassResult.find("true")))
+			if ((strByPassResult.find("True") != std::string::npos) || (strByPassResult.find("true") != std::string::npos))
 			{
 				// SystemEvent.NASConnect=True
 				g_Worker_Storage_info_[channel].nas_presence = 0;
@@ -3170,7 +3170,7 @@ void sunapi_manager::thread_function_for_storage_presence(int channel, const std
 		}
 		else
 		{
-			if (strByPassResult.find("System"))
+			if (strByPassResult.find("System") != std::string::npos)
 			{
 				json_error_t error_check;
 				json_t* json_strRoot = json_loads(strByPassResult.c_str(), 0, &error_check);

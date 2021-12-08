@@ -89,7 +89,8 @@ void WriteLog(std::string strLog)
 
 	HANDLE hFile;
 	DWORD tempByte;
-	char* pszDir = "mainagent_log.txt";
+	//char* pszDir = "mainagent_log.txt";
+	char pszDir[18] = "mainagent_log.txt";
 
 	hFile = CreateFile(pszDir,
 		GENERIC_WRITE,
@@ -364,13 +365,33 @@ int main(int argc, char* argv[])
 
 	int agent_mode = std::atoi(argv[1]);
 	char szHalfPassword[32] = { 0, };
-	memcpy(&szHalfPassword, argv[2], (strlen(argv[2])));
+	if (strlen(argv[2]) > 32)
+	{
+		memcpy(&szHalfPassword, argv[2], 32);
+	}
+	else
+	{
+		memcpy(&szHalfPassword, argv[2], strlen(argv[2]));
+	}
+#if 0
 	int original_JsonSize = std::atoi(argv[3]);
 	int enc_BinarySize = std::atoi(argv[4]);
+#else
+	int original_JsonSize = 5196;
+	int enc_BinarySize = 5196;
+
+	int nArgv3 = std::atoi(argv[3]);
+	if (nArgv3 > 0)
+		original_JsonSize = nArgv3;
+
+	int nArgv4 = std::atoi(argv[4]);
+	if(nArgv4 > 0)
+		enc_BinarySize = nArgv4;
+#endif
 
 	int enc_StringSize = strlen(argv[5]);
 	char* szEncString;
-	szEncString = (char*)malloc((sizeof(char) * enc_StringSize));
+	szEncString = (char*)calloc(enc_StringSize, sizeof(char));
 
 	memcpy(szEncString, argv[5], enc_StringSize);
 
@@ -380,7 +401,8 @@ int main(int argc, char* argv[])
 #endif
 
 	char* base64_output;
-	base64_output = (char*)malloc((sizeof(char) * enc_BinarySize));
+	//base64_output = (char*)malloc((sizeof(char) * enc_BinarySize));
+	base64_output = (char*)calloc(enc_BinarySize + 1 , sizeof(char));
 
 	char* const enc_data = (char*)b64tobin(base64_output, szEncString);
 
@@ -391,7 +413,7 @@ int main(int argc, char* argv[])
 
 	pHBirdCrypto pCrypto = HBirdCrypto_Create(__CRYPT_SIZE_256__, eString, szHalfPassword, 32);
 
-	char* pOutTextData = (char*)calloc(sizeof(char), original_JsonSize + 1);
+	char* pOutTextData = (char*)calloc(original_JsonSize + 1, sizeof(char));
 	int output_JsonSize = original_JsonSize + 1;
 	int ret = decrypt_Text_C(pCrypto, base64_output, enc_BinarySize, &pOutTextData, &output_JsonSize, NULL, 0);
 

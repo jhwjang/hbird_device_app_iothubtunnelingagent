@@ -3,10 +3,13 @@
 #include "main_manager.h"
 
 #include "jansson.h"
-#include "print_log.h"
+//#include "print_log.h"
 
 // time
 //#include "win_time.h"
+
+#define HWANJANG_LOG(fmt, ...) { printf("[hwanjang] [%s : %d] %s -> "fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); }
+
 
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
