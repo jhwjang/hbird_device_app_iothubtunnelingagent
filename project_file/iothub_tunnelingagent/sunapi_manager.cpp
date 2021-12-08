@@ -3110,7 +3110,7 @@ void sunapi_manager::GetNASPresenceOfSubdevice(int channel, const std::string de
 		if (strByPassResult.empty())
 		{
 			// fail
-			g_Worker_Storage_info_[channel].nas_presence = 0;
+			g_Worker_Storage_info_[channel].nas_presence = false;
 		}
 		else
 		{
@@ -3120,12 +3120,12 @@ void sunapi_manager::GetNASPresenceOfSubdevice(int channel, const std::string de
 			if (strByPassResult.find("true") != std::string::npos)
 			{
 				// SystemEvent.NASConnect=True
-				g_Worker_Storage_info_[channel].nas_presence = 0;
+				g_Worker_Storage_info_[channel].nas_presence = true;
 			}
 			else
 			{
 				// SystemEvent.NASConnect=False
-				g_Worker_Storage_info_[channel].nas_presence = 0;
+				g_Worker_Storage_info_[channel].nas_presence = false;
 			}
 		}
 	}
