@@ -156,9 +156,15 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 	chunk.size = 0;    /* no data at this point */
 
 	CURL* curl_handle;
-	CURLcode res;
+	CURLcode res = CURLE_OK;
 
-	curl_global_init(CURL_GLOBAL_ALL);
+	res = curl_global_init(CURL_GLOBAL_ALL);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+
 	curl_handle = curl_easy_init();
 
 #if 0  // 2019.09.05 hwanjang - sunapi debugging
@@ -179,35 +185,100 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		else
 			headers = curl_slist_append(headers, "Accept: application/text");
 
-		curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+		res = curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 #endif
 
-		curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
-		curl_easy_setopt(curl_handle, CURLOPT_URL, strRequest.c_str());
+		res = curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
+		res = curl_easy_setopt(curl_handle, CURLOPT_URL, strRequest.c_str());
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 		//curl_easy_setopt(curl_handle, CURLOPT_PORT, 80L);
-		curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
-		curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
+		res = curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
+		res = curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 
 		if (ssl_opt)
 		{
 			std::string ca_path = "config/ca-certificates.crt";
-			curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
-			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+			res = curl_easy_setopt(curl_handle, CURLOPT_CAINFO, ca_path.c_str());
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
+			res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
 		}
 		else
 		{
-			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
-			curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+			res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
+			res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
 		}
 
 		/* send all data to this function  */
-		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+		res = curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 
 		/* we pass our 'chunk' struct to the callback function */
-		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
+		res = curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&chunk);
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
-		curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, timeout);
-		curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
+		res = curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, timeout);
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
+		res = curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
+		/* Check for errors */
+		if (res != CURLE_OK) {
+			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			return res;
+		}
 		//curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
 
 		res = curl_easy_perform(curl_handle);
@@ -328,7 +399,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	printf("[hwanjang] Tunneling param , method : %s , url : %s\n", strMethod, strUrl);
 
 	// tunneling
-
+	CURLcode res;
 	CURL* curl_handle;
 	struct MemoryStruct bodyChunk, headerChunk;
 
@@ -522,58 +593,158 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	struct curl_slist* connect_to_slist = NULL;
 	connect_to_slist = curl_slist_append(NULL, strConnection.c_str());
 
-	curl_easy_setopt(curl_handle, CURLOPT_RESOLVE, resolve_slist);
-	curl_easy_setopt(curl_handle, CURLOPT_CONNECT_TO, connect_to_slist);
-	curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, NULL);
-
+	res = curl_easy_setopt(curl_handle, CURLOPT_RESOLVE, resolve_slist);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_CONNECT_TO, connect_to_slist);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, NULL);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 	//headerList = curl_slist_append(headerList, "Accept: application/json");
 	//curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headerList);
 	//curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, "GET");
-	curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, strMethod);
+	res = curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, strMethod);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+
 	if (!strncmp("POST", strMethod, 4))
 	{
+#if 0
 		std::string bodyMsg;
 		if (strlen(strBody) > 0)
 		{
 			bodyMsg = strBody;
 		}
-
+#endif
 		headerList = curl_slist_append(headerList, "Expect:");
 		headerList = curl_slist_append(headerList, "content-length:");
 		headerList = curl_slist_append(headerList, "content-type:");
 
+#if 0
 		if (bodyMsg.length() > 0)
 		{
 			curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, bodyMsg.c_str());
 			curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, bodyMsg.size());
 		}
+#else
+		if (strlen(strBody) > 0)
+		{
+			res = curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, strBody);
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
+			res = curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, strlen(strBody));
+			/* Check for errors */
+			if (res != CURLE_OK) {
+				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				return res;
+			}
+		}
+#endif
 	}
 
 	//headerList = curl_slist_append(headerList, "Accept: application/json");
 
 	// header List
-	curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headerList);
+	res = curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headerList);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	curl_easy_setopt(curl_handle, CURLOPT_URL, strRequestUrl.c_str());
-	curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
-	curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strUserPW.c_str());
+	res = curl_easy_setopt(curl_handle, CURLOPT_URL, strRequestUrl.c_str());
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strUserPW.c_str());
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, true);
+	res = curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, true);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
-	curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
+	res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
 	/* send all data to this function  */
-	curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+	res = curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+
 	/* we pass our 'chunk' struct to the callback function */
-	curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&bodyChunk);
+	res = curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void*)&bodyChunk);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, WriteMemoryCallbackForHeader);
-	curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void*)&headerChunk);
+	res = curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, WriteMemoryCallbackForHeader);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
+	res = curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void*)&headerChunk);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+	res = curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
+	/* Check for errors */
+	if (res != CURLE_OK) {
+		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+		return res;
+	}
 
-	CURLcode res = curl_easy_perform(curl_handle);
+	res = curl_easy_perform(curl_handle);
 
 	/* check for errors */
 	if (res != CURLE_OK) {

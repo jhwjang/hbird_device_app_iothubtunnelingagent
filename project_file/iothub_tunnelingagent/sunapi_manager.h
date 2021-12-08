@@ -224,7 +224,7 @@ protected:
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, std::string strRequest, std::string strPW, std::string* strResult);
 #else  // add timeout option
 	CURLcode CURL_Process(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, std::string* strResult);
-	CURLcode curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, void *chunk_data);
+	//CURLcode curlProcess(bool json_mode, bool ssl_opt, int timeout, std::string strRequest, std::string strPW, void *chunk_data);
 #endif
 
 	bool ByPassSUNAPI(int channel, bool json_mode, const std::string IPAddress, const std::string devicePW, const std::string bypassURI, std::string* strResult, CURLcode* resCode);
@@ -342,7 +342,6 @@ private:
 	bool g_CheckNeedSleepForRequest;
 	bool g_CheckUpdateOfRegistered;
 	int g_RetryCountCheckUpdateOfRegistered;
-	time_t g_checkTimeOfRegisterCamera;
 	time_t g_UpdateTimeOfRegistered;
 	time_t g_UpdateTimeOfDiscovery;
 
