@@ -1,5 +1,6 @@
 #include <stdlib.h>
 //#include <unistd.h>    // 리눅스에서 usleep 함수가 선언된 헤더 파일
+#include <random>
 
 #include "hummingbird_for_broker.h"
 
@@ -175,6 +176,12 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
     printf("[hwanjang] diff_sec : %lld\n", diff_sec);
 		
 	srand((unsigned)time(NULL));
+
+	std::random_device rd;  // seed 값을 얻기 위해 random_device 생성.
+	//std::mt19937 gen(rd());   // 난수 생성 엔진 초기화.
+	std::minstd_rand gen(rd()); // 난수 생성 엔진 초기화. (light version)
+	std::uniform_int_distribution<int> dis(0, 20150101);    // 0~19840612 까지 난수열을 생성하기 위한 균등 분포.
+
     if(diff_sec < 1200)  // 1200 -> 20 min
     { 
 		#if 0
@@ -183,7 +190,7 @@ if(clock_gettime(CLOCK_REALTIME, &tspec) != -1)
 		else
 			sec = (rand() % 60) + 30;
 		#else
-        sec = (rand() % 10) + 1;  // 1 ~ 10 sec
+		sec = (dis(gen) % 10) + 1;  // 1 ~ 10 sec
 		#endif
 
         printf("[hwanjang] broker --> %d. reconnect after %d sec ...\n", (nretry_+1), sec);

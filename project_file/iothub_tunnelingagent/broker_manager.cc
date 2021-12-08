@@ -1,5 +1,6 @@
 #include <iostream>
 #include <thread>
+#include <random>
 
 #include "broker_manager.h"
 
@@ -331,8 +332,12 @@ void BrokerManager::SendCloudServiceStatus(const std::string& target_app_id)
 	// json key - tid
 	std::string strTid = "cmd_";
 
-	srand((unsigned int)time(NULL));
-	int tid = rand() % 10000;
+	std::random_device rd;  // seed 값을 얻기 위해 random_device 생성.
+	//std::mt19937 gen(rd());   // 난수 생성 엔진 초기화.
+	std::minstd_rand gen(rd()); // 난수 생성 엔진 초기화. (light version)
+	std::uniform_int_distribution<int> dis(0, 20150101);    // 0~19840612 까지 난수열을 생성하기 위한 균등 분포.
+
+	int tid = dis(gen) % 10000;
 #if 0
 	std::stringstream ss;
 	ss << tid;

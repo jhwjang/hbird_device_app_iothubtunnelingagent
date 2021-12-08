@@ -7,6 +7,8 @@
 #include <chrono>
 #include <vector>
 
+#include <random>
+
 #include "api_manager.h"
 //#include "NetworkAdapter_manager.h"
 
@@ -1067,11 +1069,16 @@ int APIManager::file_exit(std::string& filename)
 
 int APIManager::CalculateRetryTime(int count)
 {
+	std::random_device rd;  // seed 값을 얻기 위해 random_device 생성.
+	//std::mt19937 gen(rd());   // 난수 생성 엔진 초기화.
+	std::minstd_rand gen(rd()); // 난수 생성 엔진 초기화. (light version)
+	std::uniform_int_distribution<int> dis(0, 20150101);    // 0~19840612 까지 난수열을 생성하기 위한 균등 분포.
+
 	int retryTime = 0;
 	if(count < 4)
-		retryTime = (rand() % 10) + 1;  // 1 ~ 10 sec
+		retryTime = (dis(gen) % 10) + 1;  // 1 ~ 10 sec
 	else
-		retryTime = (rand() % 30) + 30;  // 30 ~ 60 sec
+		retryTime = (dis(gen) % 30) + 30;  // 30 ~ 60 sec
 
 	return retryTime;
 }
