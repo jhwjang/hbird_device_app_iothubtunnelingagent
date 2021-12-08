@@ -3072,7 +3072,7 @@ void sunapi_manager::GetDASPresenceOfSubdevice(int channel, const std::string de
 #ifdef HWANJANG_DEBUG
 			printf("strByPassResult : %s\n", strByPassResult.c_str());
 #endif
-			if ((strByPassResult.find("True") != std::string::npos) || (strByPassResult.find("true") != std::string::npos))
+			if (strByPassResult.find("true") != std::string::npos)
 			{
 				// SD card (DAS insert = True)
 				g_Worker_Storage_info_[channel].das_presence = true;
@@ -3117,7 +3117,7 @@ void sunapi_manager::GetNASPresenceOfSubdevice(int channel, const std::string de
 #ifdef HWANJANG_DEBUG
 			printf("strByPassResult : %s\n", strByPassResult.c_str());
 #endif
-			if ((strByPassResult.find("True") != std::string::npos) || (strByPassResult.find("true") != std::string::npos))
+			if (strByPassResult.find("true") != std::string::npos)
 			{
 				// SystemEvent.NASConnect=True
 				g_Worker_Storage_info_[channel].nas_presence = 0;
