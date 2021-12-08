@@ -532,7 +532,12 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, strMethod);
 	if (!strncmp("POST", strMethod, 4))
 	{
-		std::string bodyMsg = strBody;
+		std::string bodyMsg;
+		if (strlen(strBody) > 0)
+		{
+			bodyMsg = strBody;
+		}
+
 		headerList = curl_slist_append(headerList, "Expect:");
 		headerList = curl_slist_append(headerList, "content-length:");
 		headerList = curl_slist_append(headerList, "content-type:");
