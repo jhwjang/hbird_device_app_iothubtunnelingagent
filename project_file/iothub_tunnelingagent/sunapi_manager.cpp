@@ -5530,6 +5530,7 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 				//fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 				printf("GetLatestFirmwareVersionFromURL() -> curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
+				fclose(pagefile);
 				return false;
 			}
 
