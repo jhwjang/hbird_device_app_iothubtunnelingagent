@@ -3,13 +3,9 @@
 #include "main_manager.h"
 
 #include "jansson.h"
-//#include "print_log.h"
 
 // time
 //#include "win_time.h"
-
-#define HWANJANG_LOG(fmt, ...) { printf("[hwanjang] [%s : %d] %s -> "fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); }
-
 
 #define CA_FILE_INFO "config/ca-file_info.cfg"
 #define CA_FILE_PATH "{\"path\": \"config/ca-certificates.crt\"}"
@@ -142,8 +138,9 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 		fprintf(stderr, "error : root\n");
 		fprintf(stderr, "error : on line %d: %s\n", error_check.line, error_check.text);
 
-		//printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
-		HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+		printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 		return;
 	}
@@ -155,9 +152,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 		if (result)
 		{
-			HWANJANG_LOG("json_unpack fail .. deviceId or deviceKey in json_strRoot !!!\n");
-			HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
-
+#ifdef HWANJANG_DEBUG			
+			printf("sunapi_manager::StartMainManager() -> json_unpack fail .. deviceId or deviceKey in json_strRoot !!!\n");
+			printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 			exit(1);
 		}
 		else
@@ -169,9 +167,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 			}
 			else
 			{
-				HWANJANG_LOG("json_unpack fail .. DeviceId or DeviceKey is empty() !!!\n");
-				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
-
+#ifdef HWANJANG_DEBUG	
+				printf("sunapi_manager::StartMainManager() -> json_unpack fail .. DeviceId or DeviceKey is empty() !!!\n");
+				printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 				exit(1);
 			}
 		}
@@ -182,8 +181,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 		if (result)
 		{
-			HWANJANG_LOG("json_unpack fail .. MAC in json_strRoot !!!\n");
-			HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG	
+			printf("sunapi_manager::StartMainManager() -> json_unpack fail .. MAC in json_strRoot !!!\n");
+			printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 			g_SettingInfo.MACAddress = "fail";
 		}
@@ -195,9 +196,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 			}
 			else
 			{
-				HWANJANG_LOG("json_unpack fail .. MACAddress is empty() !!!\n");
-				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
-
+#ifdef HWANJANG_DEBUG	
+				printf("sunapi_manager::StartMainManager() -> json_unpack fail .. MACAddress is empty() !!!\n");
+				printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 				g_SettingInfo.MACAddress = "fail";
 			}
 		}
@@ -216,8 +218,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 			result = json_unpack(json_system, "{s:s}", "version", &charVersion);
 			if (result)
 			{
-				HWANJANG_LOG("json_unpack fail .. version in systemConfig !!!\n");
-				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+				printf("sunapi_manager::StartMainManager() -> json_unpack fail .. version in systemConfig !!!\n");
+				printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 			}
 			else
 			{
@@ -241,8 +245,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. web_port in common !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. web_port in common !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.https_port = 443;  // default
 				}
@@ -257,8 +263,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. deviceModel in common !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. deviceModel in common !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.deviceModel = "cloudgateway";  // default
 				}
@@ -276,8 +284,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. web_port in common !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. web_port in common !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.maxChannels = 128;  // default
 				}
@@ -303,8 +313,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. cg_id in private !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. cg_id in private !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.gatewayId = "admin";  // default
 				}
@@ -322,8 +334,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. cg_password in private !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. cg_password in private !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.gatewayPassword = "1234";  // default
 				}
@@ -341,8 +355,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. cloud_id in private !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. cloud_id in private !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.cloudAccountId = "default@wisenetlife.com";  // default
 				}
@@ -360,8 +376,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. cloud_password in private !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. cloud_password in private !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.System_info.cloudAccountPassword = "pasword";  // default
 				}
@@ -393,10 +411,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 			if (result)
 			{
-
-				HWANJANG_LOG("json_unpack fail .. wakeupInterval in configInformation !!!\n");
-				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
-
+#ifdef HWANJANG_DEBUG
+				printf("sunapi_manager::StartMainManager() -> json_unpack fail .. wakeupInterval in configInformation !!!\n");
+				printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 				g_SettingInfo.Config_info.wakeupInterval = 86400;
 			}
 			else
@@ -409,8 +427,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 			if (!json_cache_array)
 			{
-				HWANJANG_LOG("NG1, json_object_get fail ... cache-control in configInformation !!\n");
-				HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG	
+				printf("sunapi_manager::StartMainManager() -> NG1, json_object_get fail ... cache-control in configInformation !!\n");
+				printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 				g_SettingInfo.Config_info.cache_control = 300;
 			}
@@ -428,8 +448,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 					if (ret)
 					{
-						HWANJANG_LOG("json_unpack fail .. max-age in cache-control !!!\n");
-						HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+						printf("sunapi_manager::StartMainManager() -> json_unpack fail .. max-age in cache-control !!!\n");
+						printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 						g_SettingInfo.Config_info.cache_control = 300;
 					}
@@ -445,7 +467,9 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 			if (!json_sub_mqtt)
 			{
-				HWANJANG_LOG("cannot find mqtt ... strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+				printf("sunapi_manager::StartMainManager() -> cannot find mqtt ... strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 				g_SettingInfo.Config_info.Mqtt_tls_server = "mqtt.prod.wisenetcloud.com:5000";  // default
 			}
@@ -457,8 +481,10 @@ void MainManager::StartMainManager(int mode, std::string strJSONData)
 
 				if (result)
 				{
-					HWANJANG_LOG("json_unpack fail .. tls in MQTT !!!\n");
-					HWANJANG_LOG("strJSONData : \n%s\n", strJSONData.c_str());
+#ifdef HWANJANG_DEBUG
+					printf("sunapi_manager::StartMainManager() -> json_unpack fail .. tls in MQTT !!!\n");
+					printf("sunapi_manager::StartMainManager() -> strJSONData : \n%s\n", strJSONData.c_str());
+#endif
 
 					g_SettingInfo.Config_info.Mqtt_tls_server = "mqtt.prod.wisenetcloud.com:5000";  // default
 				}
