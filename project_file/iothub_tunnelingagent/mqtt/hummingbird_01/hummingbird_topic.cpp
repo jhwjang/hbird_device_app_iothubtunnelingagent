@@ -72,6 +72,7 @@ hummingbird_topic_pub_Message::hummingbird_topic_pub_Message(mqtt::async_client*
     topic_ = "devices/";
     topic_.append(hub_id);
     topic_.append("/message");
+    QOS = 1;
 }
 
 std::string hummingbird_topic_pub_Message::get_topic(){
@@ -101,6 +102,8 @@ hummingbird_topic_pub_Connect::hummingbird_topic_pub_Connect(mqtt::async_client*
     topic_ = "devices/";
     topic_.append(hub_id);
     topic_.append("/connection");
+
+    QOS = 1;
 }
 
 std::string hummingbird_topic_pub_Connect::get_topic(){

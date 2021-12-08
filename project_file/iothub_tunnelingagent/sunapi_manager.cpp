@@ -1565,6 +1565,11 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1572,6 +1577,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1579,6 +1588,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1587,6 +1600,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1594,6 +1611,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1605,6 +1626,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 
@@ -1612,6 +1637,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 		}
@@ -1621,6 +1650,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 
@@ -1628,6 +1661,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+				/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 		}
@@ -1637,6 +1674,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1645,6 +1686,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
@@ -1652,6 +1697,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -1659,6 +1708,10 @@ CURLcode sunapi_manager::CURL_Process(bool json_mode, bool ssl_opt, int timeout,
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -3019,7 +3072,7 @@ void sunapi_manager::GetDASPresenceOfSubdevice(int channel, const std::string de
 #ifdef HWANJANG_DEBUG
 			printf("strByPassResult : %s\n", strByPassResult.c_str());
 #endif
-			if ((strByPassResult.find("True")) || (strByPassResult.find("true")))
+			if ((strByPassResult.find("True") != std::string::npos) || (strByPassResult.find("true") != std::string::npos))
 			{
 				// SD card (DAS insert = True)
 				g_Worker_Storage_info_[channel].das_presence = true;
@@ -5590,6 +5643,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5598,6 +5654,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5605,6 +5664,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5613,6 +5675,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5621,6 +5686,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5629,6 +5697,9 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			/* cleanup curl stuff */
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
 			return false;
 		}
 
@@ -5642,6 +5713,12 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				fclose(pagefile);
+
+				/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
 				return false;
 			}
 
@@ -5653,6 +5730,11 @@ bool sunapi_manager::GetLatestFirmwareVersionFromURL(std::string update_FW_Info_
 				printf("GetLatestFirmwareVersionFromURL() -> curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
 				fclose(pagefile);
+
+				/* cleanup curl stuff */
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return false;
 			}
 

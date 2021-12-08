@@ -22,6 +22,8 @@ hummingbird::hummingbird(mqtt::async_client* cli, mqtt::connect_options& connOpt
 
 	lastConnectionTime = 0;
 	gHummingbirdStart = false;
+	conn_status = false;
+
 }
 #else
 hummingbird::hummingbird(mqtt::async_client* cli,hummingbird_curl_for_command* curl, mqtt::connect_options& connOpts, hummingbird_topic **pub_topic_list, hummingbird_topic **sub_topic_list)

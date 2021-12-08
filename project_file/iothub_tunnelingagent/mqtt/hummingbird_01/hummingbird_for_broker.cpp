@@ -24,6 +24,7 @@ hummingbird_for_broker::hummingbird_for_broker(mqtt::async_client* client, mqtt:
 
 	lastConnectionTime = 0;
 	gHummingbirdStart = false;
+	g_conn_status = false;
 }
 #else
 hummingbird_for_broker::hummingbird_for_broker(mqtt::async_client* cli,hummingbird_curl_for_command* curl, mqtt::connect_options& connOpts, hummingbird_topic_for_broker **pub_topic_list, hummingbird_topic_for_broker **sub_topic_list)
@@ -469,6 +470,13 @@ void hummingbird_for_broker::message_arrived(mqtt::const_message_ptr msg)
 		
 	int index = get_sub_topic_instance(topic);
 	//std::cout << "topic index : " << index << std::endl;
-	sub_topic_list.at(index)->mqtt_response(msg);
+	if (index < 0)
+	{
+		printf("[hwanjang] not found topic : %s\n", topic.c_str());
+	}
+	else
+	{
+		sub_topic_list.at(index)->mqtt_response(msg);
+	}
 
 }

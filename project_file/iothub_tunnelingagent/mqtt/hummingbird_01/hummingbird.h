@@ -393,21 +393,42 @@ printf("[hwanjang] connection message : \n%s\n",presence_str.c_str());
 			topic = create_topic(1, "subdevices/+/users/+/command"); // 1: sub
 			index = get_sub_topic_instance(topic);
 			//std::cout << "topic index : " << index << std::endl;
-			sub_topic_list.at(index)->mqtt_response(msg);
+			if (index < 0)
+			{
+				printf("[hwanjang] not found topic : %s\n", topic.c_str());
+			}
+			else
+			{
+				sub_topic_list.at(index)->mqtt_response(msg);
+			}
 		}
 		else if (msg->get_topic().find("sunapi") != std::string::npos)
 		{
 			topic = create_topic(1, "subdevices/+/users/+/sunapi"); // 1: sub
 			index = get_sub_topic_instance(topic);
 			//std::cout << "topic index : " << index << std::endl;
-			sub_topic_list.at(index)->mqtt_response(msg);
+			if (index < 0)
+			{
+				printf("[hwanjang] not found topic : %s\n", topic.c_str());
+			}
+			else
+			{
+				sub_topic_list.at(index)->mqtt_response(msg);
+			}
 		}
 		else if (msg->get_topic().find("http") != std::string::npos)
 		{
 			topic = create_topic(1, "subdevices/+/users/+/http"); // 1: sub
 			index = get_sub_topic_instance(topic);
 			//std::cout << "topic index : " << index << std::endl;
-			sub_topic_list.at(index)->mqtt_response(msg);
+			if (index < 0)
+			{
+				printf("[hwanjang] not found topic : %s\n", topic.c_str());
+			}
+			else
+			{
+				sub_topic_list.at(index)->mqtt_response(msg);
+			}
 		}
 #endif
 

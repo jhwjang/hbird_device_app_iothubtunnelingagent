@@ -96,7 +96,9 @@ std::string hummingbird_topic_for_broker::create_topic(std::string group_id, std
 ////////////////////////////////////////////////////////////////////////////////
 // hummingbird_topic_pub_Connect_for_broker
 hummingbird_topic_pub_Connect_for_broker::hummingbird_topic_pub_Connect_for_broker(mqtt::async_client* cli, std::string group_id, std::string d_id, std::string s_id)
-  : hummingbird_topic_for_broker(cli){
+  : hummingbird_topic_for_broker(cli),
+    g_QOS(1)
+{
     std::string subTopic = "connection";
     g_Topic_ = create_topic(group_id, d_id, s_id, subTopic); // pub;
 
@@ -181,7 +183,9 @@ int hummingbird_topic_sub_Connect_for_broker::init(){
 ////////////////////////////////////////////////////////////////////////////////
 // pub for message
 hummingbird_topic_pub_Message_for_broker::hummingbird_topic_pub_Message_for_broker(mqtt::async_client* cli,std::string group_id, std::string d_id, std::string s_id)
-    : hummingbird_topic_for_broker(cli) {
+    : hummingbird_topic_for_broker(cli),
+    g_QOS(1)
+{
     std::string subTopic = "message";
     g_Topic_ = create_topic(group_id, d_id, s_id, subTopic); // pub;
 

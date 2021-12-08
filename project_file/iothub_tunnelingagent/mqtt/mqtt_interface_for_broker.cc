@@ -65,6 +65,8 @@ HummingbirdMqttInterface_for_broker::HummingbirdMqttInterface_for_broker(const s
     g_app_key_ = app_key;
 
     connection_status = false;
+
+    _bird = nullptr;
 }
 
 HummingbirdMqttInterface_for_broker::~HummingbirdMqttInterface_for_broker()

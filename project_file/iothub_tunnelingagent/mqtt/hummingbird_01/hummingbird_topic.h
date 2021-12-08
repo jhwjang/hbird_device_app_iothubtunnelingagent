@@ -29,8 +29,7 @@ class hummingbird_topic
 {
     private:
         std::string topic_;
-	bool connect_status;
-
+	
     protected:
         mqtt::async_client* cli_;
 

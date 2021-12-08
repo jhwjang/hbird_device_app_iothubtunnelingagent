@@ -189,6 +189,10 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 #endif
@@ -197,12 +201,19 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		res = curl_easy_setopt(curl_handle, CURLOPT_URL, strRequest.c_str());
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		//curl_easy_setopt(curl_handle, CURLOPT_PORT, 80L);
@@ -210,12 +221,20 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		res = curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strPW.c_str());
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -226,12 +245,20 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 			res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 1L);
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 		}
@@ -241,12 +268,20 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 			res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0L);
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 		}
@@ -256,6 +291,10 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 
@@ -264,6 +303,10 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		//curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, CURL_TIMEOUT);
@@ -271,12 +314,20 @@ CURLcode APIManager::CURL_Process(bool json_mode, bool ssl_opt, int timeout, std
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		res = curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, CURL_CONNECTION_TIMEOUT);
 		/* Check for errors */
 		if (res != CURLE_OK) {
 			//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+			curl_easy_cleanup(curl_handle);
+			curl_global_cleanup();
+
 			return res;
 		}
 		//curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
@@ -597,18 +648,30 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_CONNECT_TO, connect_to_slist);
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, NULL);
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	//headerList = curl_slist_append(headerList, "Accept: application/json");
@@ -618,6 +681,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -647,12 +714,20 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 			res = curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE, strlen(strBody));
 			/* Check for errors */
 			if (res != CURLE_OK) {
 				//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+				curl_easy_cleanup(curl_handle);
+				curl_global_cleanup();
+
 				return res;
 			}
 		}
@@ -666,6 +741,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -673,18 +752,30 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_DIGEST); // digest authentication
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_USERPWD, strUserPW.c_str());
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -692,6 +783,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -699,12 +794,20 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -713,6 +816,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -721,6 +828,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -728,12 +839,20 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 	res = curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void*)&headerChunk);
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 
@@ -741,6 +860,10 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 	/* Check for errors */
 	if (res != CURLE_OK) {
 		//fprintf(stderr, "curl_easy_setopt() failed: %s\n", curl_easy_strerror(res));
+
+		curl_easy_cleanup(curl_handle);
+		curl_global_cleanup();
+
 		return res;
 	}
 

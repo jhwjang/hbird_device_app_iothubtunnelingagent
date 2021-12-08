@@ -20,6 +20,7 @@
 using std::this_thread::sleep_for;
 
 #ifdef _MSC_VER 
+#if 0 // not used 
 bool Check_Bind()
 {
 #if 1
@@ -35,8 +36,12 @@ bool Check_Bind()
 	int optVal = 1;
 	char buffer[1024] = { 0 };
 	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (sock < 0)
-		std::cout << "ERROR opening socket" << std::endl;
+	if (sock == INVALID_SOCKET)
+	{
+		printf("ERROR opening socket ...\n");
+		WSACleanup();
+		exit(1);
+	}
 
 	std::cout << "Socket Created" << std::endl;
 	//setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&optVal, sizeof(optVal));
@@ -63,6 +68,7 @@ bool Check_Bind()
 
 	return true;
 }
+#endif
 
 void WriteLog(std::string strLog)
 {
@@ -408,7 +414,7 @@ int main(int argc, char* argv[])
 	printf("received JSON data : \n%s\n", pOutTextData);
 #endif
 
-	std::cout << "[hwanjang] Cloud mainAgent Start ... mode : " << agent_mode << std::endl;
+	printf("[hwanjang] Cloud mainAgent Start ... mode : %d\n",agent_mode);
 
 	MainManager* mainManager = new MainManager();
 	mainManager->StartMainManager(agent_mode, strJSONData);
