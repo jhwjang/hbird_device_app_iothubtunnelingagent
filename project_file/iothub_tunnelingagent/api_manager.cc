@@ -403,7 +403,7 @@ bool APIManager::HttpTunnelingCommand(const std::string& strTopic, json_t* json_
 
 	json_t* jmsg_headers = json_object_get(objMessage, "headers");
 
-	char* strMethod, * strUrl, * strBody;
+	const char* strMethod, * strUrl, * strBody;
 
 #if 1 // option #1 - check null
 	json_t* jmsg_body = json_object_get(objMessage, "body");
